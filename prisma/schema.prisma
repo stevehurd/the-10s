@@ -1,0 +1,111 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and pool participants
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  drafts    Draft[]
+  
+  @@map("users")
+}
+
+// Teams model for NFL and College FBS teams
+model Team {
+  id           String   @id @default(cuid())
+  name         String
+  abbreviation String   @map("abbr")
+  conference   String?
+  division     String?  // NFL only
+  league       String   // 'NFL' or 'COLLEGE'
+  externalId   String?  @map("external_id")
+  logoUrl      String?  @map("logo_url")
+  wins         Int      @default(0) // Current season wins
+  losses       Int      @default(0) // Current season losses
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  drafts       Draft[]
+  homeGames    Game[] @relation("HomeTeam")
+  awayGames    Game[] @relation("AwayTeam")
+  gameWins     Game[] @relation("Winner")
+
+  @@unique([name, league])
+  @@map("teams")
+}
+
+// Season model to track different years
+model Season {
+  id        String   @id @default(cuid())
+  year      Int
+  name      String   // "2024-2025"
+  status    String   // 'SETUP', 'DRAFT', 'ACTIVE', 'COMPLETED'
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  drafts Draft[]
+  games  Game[]
+
+  @@map("seasons")
+}
+
+// Draft model to track user picks and keepers
+model Draft {
+  id         String   @id @default(cuid())
+  seasonId   String   @map("season_id")
+  userId     String   @map("user_id")
+  teamId     String   @map("team_id")
+  round      Int
+  pickNumber Int      @map("pick_number")
+  isKeeper   Boolean  @default(false) @map("is_keeper")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  season Season @relation(fields: [seasonId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  team   Team   @relation(fields: [teamId], references: [id])
+
+  @@map("drafts")
+}
+
+// Games model to track wins and losses
+model Game {
+  id          String    @id @default(cuid())
+  seasonId    String    @map("season_id")
+  homeTeamId  String    @map("home_team_id")
+  awayTeamId  String    @map("away_team_id")
+  homeScore   Int?      @map("home_score")
+  awayScore   Int?      @map("away_score")
+  winnerId    String?   @map("winner_id")
+  gameDate    DateTime  @map("game_date")
+  week        Int
+  gameType    String    @map("game_type") // 'REGULAR', 'PLAYOFF', 'BOWL', 'CHAMPIONSHIP'
+  externalId  String?   @map("external_id")
+  status      String    // 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED'
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  season   Season @relation(fields: [seasonId], references: [id])
+  homeTeam Team   @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam Team   @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  winner   Team?  @relation("Winner", fields: [winnerId], references: [id])
+
+  @@map("games")
+}
