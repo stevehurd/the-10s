@@ -67,7 +67,7 @@ export default async function Home() {
             🏈 The 10&apos;s Pool Leaderboard
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            2025 Season
+            2025 Season - Updated
           </p>
         </div>
 
