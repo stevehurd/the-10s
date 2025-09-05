@@ -64,7 +64,7 @@ export default async function Home() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            🏈 The 10&apos;s Pool Leaderboard
+            🏈 The 10&apos;s Leaderboard
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             2025 Season
