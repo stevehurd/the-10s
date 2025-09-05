@@ -75,7 +75,7 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Football Pool Admin</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">The 10s Admin</h1>
           <p className="text-gray-600">Administrative dashboard for managing your football pool</p>
           {currentSeason && (
             <p className="text-sm text-gray-500 mt-2">Current Season: {currentSeason.name}</p>

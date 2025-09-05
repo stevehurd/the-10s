@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Football Pool Admin",
+  title: "The 10s",
   description: "Administrative dashboard for managing your football pool",
 };
 
