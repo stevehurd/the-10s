@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/db";
 
+// Force dynamic rendering to prevent build-time database queries
+export const dynamic = 'force-dynamic'
+
 type Team = {
   id: string
   name: string
