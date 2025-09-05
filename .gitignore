@@ -51,3 +51,4 @@ dev.db
 backups/
 *.sql
 database_backup_*.sql
+.env*.local

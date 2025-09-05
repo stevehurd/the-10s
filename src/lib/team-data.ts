@@ -22,14 +22,14 @@ export async function fetchCollegeTeams() {
           const fbsTeams = teams.filter((team: { Conference: string }) => team.Conference)
           console.log(`✅ Filtered to ${fbsTeams.length} FBS teams (with conferences)`)
           
-          return fbsTeams.map((team: { School: string; Name: string; ShortDisplayName?: string; Key: string; Conference: string; GlobalTeamID: number }) => ({
+          return fbsTeams.map((team: { School: string; Name: string; ShortDisplayName?: string; Key: string; Conference: string; GlobalTeamID: number; TeamLogoUrl: string }) => ({
             name: `${team.School} ${team.Name}`, // Full name: "SMU Mustangs"
             abbreviation: team.ShortDisplayName || team.Key || team.School?.substring(0, 4).toUpperCase(),
             conference: team.Conference,
             division: null,
             league: 'COLLEGE',
             externalId: team.GlobalTeamID?.toString(),
-            logoUrl: null,
+            logoUrl: team.TeamLogoUrl || null,
           }))
         }
       } else {
@@ -61,14 +61,14 @@ export async function fetchNFLTeams() {
         console.log(`✅ SportsDataIO NFL: Found ${teams?.length || 0} teams`)
         
         if (teams && Array.isArray(teams) && teams.length > 0) {
-          return teams.map((team: { FullName: string; Key: string; Conference: string; Division: string; GlobalTeamID: number; PrimaryColor: string; WikipediaLogoUrl: string }) => ({
+          return teams.map((team: { FullName: string; Key: string; Conference: string; Division: string; GlobalTeamID: number; PrimaryColor: string; WikipediaLogoURL: string }) => ({
             name: team.FullName,
             abbreviation: team.Key,
             conference: team.Conference,
             division: team.Division,
             league: 'NFL',
             externalId: team.GlobalTeamID?.toString(),
-            logoUrl: team.WikipediaLogoUrl || null,
+            logoUrl: team.WikipediaLogoURL || null,
           }))
         }
       } else {
