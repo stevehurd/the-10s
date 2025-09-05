@@ -5,7 +5,7 @@ type Team = {
   name: string
   abbreviation: string
   league: string
-  logoUrl?: string
+  logoUrl: string | null
   wins: number
   losses: number
 }
@@ -20,7 +20,7 @@ type Draft = {
 type User = {
   id: string
   name: string
-  email?: string
+  email: string | null
   drafts: Draft[]
 }
 

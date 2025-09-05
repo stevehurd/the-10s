@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     // Check if user already exists by name or email (if email provided)
-    const whereConditions = [{ name: name.trim() }]
+    const whereConditions: ({ name: string } | { email: string })[] = [{ name: name.trim() }]
     if (email?.trim()) {
       whereConditions.push({ email: email.trim() })
     }

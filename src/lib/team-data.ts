@@ -28,8 +28,8 @@ export async function fetchCollegeTeams() {
             conference: team.Conference,
             division: null,
             league: 'COLLEGE',
-            externalId: team.TeamID?.toString(),
-            logoUrl: team.TeamLogoUrl || null,
+            externalId: team.GlobalTeamID?.toString(),
+            logoUrl: null,
           }))
         }
       } else {
@@ -67,8 +67,8 @@ export async function fetchNFLTeams() {
             conference: team.Conference,
             division: team.Division,
             league: 'NFL',
-            externalId: team.TeamID?.toString(),
-            logoUrl: team.WikipediaLogoURL || null,
+            externalId: team.GlobalTeamID?.toString(),
+            logoUrl: team.WikipediaLogoUrl || null,
           }))
         }
       } else {

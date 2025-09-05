@@ -3,9 +3,10 @@ import { prisma } from '@/lib/db'
 
 export async function GET(
   request: Request,
-  { params }: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const params = await context.params
     const drafts = await prisma.draft.findMany({
       where: {
         userId: params.userId
@@ -30,9 +31,10 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const params = await context.params
     const body = await request.json()
     const { teamId, round, seasonId } = body
 
@@ -101,9 +103,10 @@ export async function POST(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const params = await context.params
     const { searchParams } = new URL(request.url)
     const draftId = searchParams.get('draftId')
 

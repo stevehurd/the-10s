@@ -3,9 +3,11 @@ import { prisma } from '@/lib/db'
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const params = await context.params
+    
     // First delete all drafts for this user
     await prisma.draft.deleteMany({
       where: {

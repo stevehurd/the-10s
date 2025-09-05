@@ -66,7 +66,7 @@ export default function DraftPage() {
       if (usersData.length > 0) {
         if (selectedUser) {
           // Preserve the selected user but update with fresh data
-          const updatedSelectedUser = usersData.find(user => user.id === selectedUser.id)
+          const updatedSelectedUser = usersData.find((user: User) => user.id === selectedUser.id)
           setSelectedUser(updatedSelectedUser || usersData[0])
         } else {
           setSelectedUser(usersData[0])
