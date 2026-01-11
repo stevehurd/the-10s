@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { 
-  fetchNFLStandings, 
+import {
+  fetchNFLStandings,
+  fetchNFLPostseasonStandings,
   fetchCollegeStandings,
-  type SportsDataStanding 
+  fetchCollegePostseasonStandings,
+  type SportsDataStanding
 } from '@/lib/sportsdata'
 
 export async function POST(request: Request) {
@@ -21,13 +23,37 @@ export async function POST(request: Request) {
     let updatedTeams = 0
     const errors: string[] = []
 
-    // Sync NFL standings
+    // Sync NFL standings (regular + postseason)
     if (league === 'NFL' || league === 'BOTH') {
       try {
-        console.log('Fetching NFL standings from SportsData.IO...')
+        console.log('Fetching NFL regular season standings from SportsData.IO...')
         const nflStandings = await fetchNFLStandings(season)
-        
+
+        console.log('Fetching NFL postseason standings from SportsData.IO...')
+        const nflPostseasonStandings = await fetchNFLPostseasonStandings(season)
+
+        // Create a map to combine regular + postseason wins
+        const combinedStandings = new Map<number, SportsDataStanding>()
+
+        // Add regular season standings
         for (const standing of nflStandings) {
+          combinedStandings.set(standing.TeamID, { ...standing })
+        }
+
+        // Add postseason wins to the existing records
+        for (const postseasonStanding of nflPostseasonStandings) {
+          const existing = combinedStandings.get(postseasonStanding.TeamID)
+          if (existing) {
+            existing.Wins += postseasonStanding.Wins
+            existing.Losses += postseasonStanding.Losses
+          } else {
+            // Team only has postseason data (shouldn't happen, but handle it)
+            combinedStandings.set(postseasonStanding.TeamID, { ...postseasonStanding })
+          }
+        }
+
+        // Sync all teams with combined wins
+        for (const standing of combinedStandings.values()) {
           try {
             await syncTeamStanding(standing, 'NFL')
             updatedTeams++
@@ -44,13 +70,37 @@ export async function POST(request: Request) {
       }
     }
 
-    // Sync College standings
+    // Sync College standings (regular + postseason including bowl games)
     if (league === 'COLLEGE' || league === 'BOTH') {
       try {
-        console.log('Fetching College standings from SportsData.IO...')
+        console.log('Fetching College regular season standings from SportsData.IO...')
         const collegeStandings = await fetchCollegeStandings(season)
-        
+
+        console.log('Fetching College postseason standings (playoff & bowl games) from SportsData.IO...')
+        const collegePostseasonStandings = await fetchCollegePostseasonStandings(season)
+
+        // Create a map to combine regular + postseason wins
+        const combinedStandings = new Map<number, SportsDataStanding>()
+
+        // Add regular season standings
         for (const standing of collegeStandings) {
+          combinedStandings.set(standing.TeamID, { ...standing })
+        }
+
+        // Add postseason wins to the existing records
+        for (const postseasonStanding of collegePostseasonStandings) {
+          const existing = combinedStandings.get(postseasonStanding.TeamID)
+          if (existing) {
+            existing.Wins += postseasonStanding.Wins
+            existing.Losses += postseasonStanding.Losses
+          } else {
+            // Team only has postseason data (shouldn't happen, but handle it)
+            combinedStandings.set(postseasonStanding.TeamID, { ...postseasonStanding })
+          }
+        }
+
+        // Sync all teams with combined wins
+        for (const standing of combinedStandings.values()) {
           try {
             await syncTeamStanding(standing, 'COLLEGE')
             updatedTeams++

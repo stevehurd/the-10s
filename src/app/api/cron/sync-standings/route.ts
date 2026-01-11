@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { 
-  fetchNFLStandings, 
+import {
+  fetchNFLStandings,
+  fetchNFLPostseasonStandings,
   fetchCollegeStandings,
-  type SportsDataStanding 
+  fetchCollegePostseasonStandings,
+  type SportsDataStanding
 } from '@/lib/sportsdata'
 
 // This endpoint is called by Vercel Cron Jobs
@@ -16,12 +18,36 @@ export async function GET() {
     const errors: string[] = []
     const results: string[] = []
 
-    // Sync NFL standings
+    // Sync NFL standings (regular + postseason)
     try {
-      console.log('🏈 Fetching NFL standings...')
+      console.log('🏈 Fetching NFL regular season standings...')
       const nflStandings = await fetchNFLStandings(2025)
-      
+
+      console.log('🏆 Fetching NFL postseason standings...')
+      const nflPostseasonStandings = await fetchNFLPostseasonStandings(2025)
+
+      // Create a map to combine regular + postseason wins
+      const combinedStandings = new Map<number, SportsDataStanding>()
+
+      // Add regular season standings
       for (const standing of nflStandings) {
+        combinedStandings.set(standing.TeamID, { ...standing })
+      }
+
+      // Add postseason wins to the existing records
+      for (const postseasonStanding of nflPostseasonStandings) {
+        const existing = combinedStandings.get(postseasonStanding.TeamID)
+        if (existing) {
+          existing.Wins += postseasonStanding.Wins
+          existing.Losses += postseasonStanding.Losses
+        } else {
+          // Team only has postseason data (shouldn't happen, but handle it)
+          combinedStandings.set(postseasonStanding.TeamID, { ...postseasonStanding })
+        }
+      }
+
+      // Sync all teams with combined wins
+      for (const standing of combinedStandings.values()) {
         try {
           await syncTeamStanding(standing, 'NFL')
           totalUpdated++
@@ -31,10 +57,11 @@ export async function GET() {
           errors.push(errorMsg)
         }
       }
-      
-      results.push(`✅ NFL: Updated ${nflStandings.length} teams`)
-      console.log(`✅ NFL standings synced: ${nflStandings.length} teams`)
-      
+
+      const postseasonCount = nflPostseasonStandings.length
+      results.push(`✅ NFL: Updated ${nflStandings.length} teams (${postseasonCount} with postseason games)`)
+      console.log(`✅ NFL standings synced: ${nflStandings.length} teams, ${postseasonCount} with postseason games`)
+
     } catch (error) {
       const errorMsg = `❌ Failed to fetch NFL standings: ${error}`
       console.error(errorMsg)
@@ -42,12 +69,36 @@ export async function GET() {
       results.push('❌ NFL: Failed to fetch data')
     }
 
-    // Sync College standings  
+    // Sync College standings (regular + postseason including bowl games)
     try {
-      console.log('🎓 Fetching College standings...')
+      console.log('🎓 Fetching College regular season standings...')
       const collegeStandings = await fetchCollegeStandings(2025)
-      
+
+      console.log('🏆 Fetching College postseason standings (playoff & bowl games)...')
+      const collegePostseasonStandings = await fetchCollegePostseasonStandings(2025)
+
+      // Create a map to combine regular + postseason wins
+      const combinedStandings = new Map<number, SportsDataStanding>()
+
+      // Add regular season standings
       for (const standing of collegeStandings) {
+        combinedStandings.set(standing.TeamID, { ...standing })
+      }
+
+      // Add postseason wins to the existing records
+      for (const postseasonStanding of collegePostseasonStandings) {
+        const existing = combinedStandings.get(postseasonStanding.TeamID)
+        if (existing) {
+          existing.Wins += postseasonStanding.Wins
+          existing.Losses += postseasonStanding.Losses
+        } else {
+          // Team only has postseason data (shouldn't happen, but handle it)
+          combinedStandings.set(postseasonStanding.TeamID, { ...postseasonStanding })
+        }
+      }
+
+      // Sync all teams with combined wins
+      for (const standing of combinedStandings.values()) {
         try {
           await syncTeamStanding(standing, 'COLLEGE')
           totalUpdated++
@@ -57,10 +108,11 @@ export async function GET() {
           errors.push(errorMsg)
         }
       }
-      
-      results.push(`✅ College: Updated ${collegeStandings.length} teams`)
-      console.log(`✅ College standings synced: ${collegeStandings.length} teams`)
-      
+
+      const postseasonCount = collegePostseasonStandings.length
+      results.push(`✅ College: Updated ${collegeStandings.length} teams (${postseasonCount} with postseason games)`)
+      console.log(`✅ College standings synced: ${collegeStandings.length} teams, ${postseasonCount} with postseason games`)
+
     } catch (error) {
       const errorMsg = `❌ Failed to fetch College standings: ${error}`
       console.error(errorMsg)

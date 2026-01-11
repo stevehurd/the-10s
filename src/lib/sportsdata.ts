@@ -65,7 +65,7 @@ export async function fetchNFLStandings(season: number = 2025): Promise<SportsDa
   const url = `${BASE_URL}/nfl/scores/json/Standings/${season}`
 
   console.log('Fetching NFL standings from:', url)
-  
+
   const response = await fetch(url, {
     headers: {
       'Ocp-Apim-Subscription-Key': SPORTSDATA_API_KEY,
@@ -78,9 +78,40 @@ export async function fetchNFLStandings(season: number = 2025): Promise<SportsDa
   }
 
   const standings = await response.json()
-  
+
   // Return actual standings data without modification
-  
+
+
+  return standings
+}
+
+// NFL Postseason Standings API calls
+export async function fetchNFLPostseasonStandings(season: number = 2025): Promise<SportsDataStanding[]> {
+  if (!SPORTSDATA_API_KEY) {
+    throw new Error('SportsData.IO API key not configured')
+  }
+
+  const url = `${BASE_URL}/nfl/scores/json/Standings/${season}POST`
+
+  console.log('Fetching NFL postseason standings from:', url)
+
+  const response = await fetch(url, {
+    headers: {
+      'Ocp-Apim-Subscription-Key': SPORTSDATA_API_KEY,
+      'Accept': 'application/json'
+    }
+  })
+
+  if (!response.ok) {
+    // If postseason hasn't started yet, the API might return 404
+    if (response.status === 404) {
+      console.log('Postseason standings not available yet (404)')
+      return []
+    }
+    throw new Error(`Failed to fetch NFL postseason standings: ${response.status} ${response.statusText}`)
+  }
+
+  const standings = await response.json()
 
   return standings
 }
@@ -92,7 +123,7 @@ export async function fetchCollegeStandings(season: number = 2025): Promise<Spor
   }
 
   console.log('Fetching college standings from SportsData.IO...')
-  
+
   // For 2025, use the LeagueHierarchy endpoint to get current data
   const response = await fetch(
     `${BASE_URL}/cfb/scores/json/LeagueHierarchy`,
@@ -109,7 +140,7 @@ export async function fetchCollegeStandings(season: number = 2025): Promise<Spor
   }
 
   const conferences = await response.json()
-  
+
   // Flatten all teams from all conferences into a single array
   const teams: SportsDataStanding[] = []
   for (const conference of conferences) {
@@ -131,8 +162,39 @@ export async function fetchCollegeStandings(season: number = 2025): Promise<Spor
       })
     }
   }
-  
+
   return teams
+}
+
+// College Football Postseason Standings (Playoff & Bowl Games)
+export async function fetchCollegePostseasonStandings(season: number = 2025): Promise<SportsDataStanding[]> {
+  if (!SPORTSDATA_API_KEY) {
+    throw new Error('SportsData.IO API key not configured')
+  }
+
+  const url = `${BASE_URL}/cfb/scores/json/Standings/${season}POST`
+
+  console.log('Fetching college postseason standings from:', url)
+
+  const response = await fetch(url, {
+    headers: {
+      'Ocp-Apim-Subscription-Key': SPORTSDATA_API_KEY,
+      'Accept': 'application/json'
+    }
+  })
+
+  if (!response.ok) {
+    // If postseason hasn't started yet, the API might return 404
+    if (response.status === 404) {
+      console.log('College postseason standings not available yet (404)')
+      return []
+    }
+    throw new Error(`Failed to fetch college postseason standings: ${response.status} ${response.statusText}`)
+  }
+
+  const standings = await response.json()
+
+  return standings
 }
 
 // Helper function to determine game winner
