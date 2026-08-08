@@ -2,7 +2,7 @@
 
 ## Direction
 
-The 10s should feel like an editorial football publication fused with a live draft board. The interface is direct, athletic, information-rich, and confident. Its palette is inspired by classic Denver football colors without using team marks or copying a team identity.
+The 10s should feel like a friendly group trip app reimagined for a football pool: approachable, lively, spacious, and immediately understandable. It takes cues from welcoming marketplace products without copying another company’s brand, assets, or exact components.
 
 Team marks, records, standings, and people are the content. Interface chrome stays quiet so those elements carry the energy.
 
@@ -10,29 +10,26 @@ Team marks, records, standings, and people are the content. Interface chrome sta
 
 Both themes are first-class and must retain identical hierarchy, spacing, and functionality.
 
-- Light: cool-cloud `#f4f6fb` canvas, white working surfaces, deep-navy ink `#080d24`, blue-gray hairlines.
-- Dark: midnight `#070a18` canvas, navy `#0e1530` working surfaces, cool-white text, blue-charcoal hairlines.
+- Light: warm-cloud `#f7f7f3` canvas, white working surfaces, soft-black `#20231d` text, warm-gray hairlines.
+- Dark: soft-black `#121510` canvas, charcoal-olive `#1b1f18` working surfaces, warm-white text, quiet olive-gray hairlines.
 - A saved explicit choice overrides the operating-system preference.
 - Never communicate state through theme-dependent color alone.
 
 ## Color roles
 
-- Primary ink: `#080d24` light, `#f7f8fc` dark
-- Canvas: `#f4f6fb` light, `#070a18` dark
-- Raised surface: `#ffffff` light, `#0e1530` dark
-- Hairline: `#c8cedd` light, `#2b365d` dark
-- Muted text: `#68738e` light, `#a5aec6` dark
-- Classic blue: `#001489`; use brighter `#1b32b0` or `#91a1ff` where dark-mode contrast requires it
-- Classic orange: `#fa4616`; use darker `#c42f07` for small text on light surfaces and lighter `#ff8a68` on dark surfaces
-- Powder blue support: `#e1e6ff` light, `#111b5a` dark
-- Warm cream support: `#fff3ee` light, `#2b1007` dark
-- Celebration gold: `#f6c453` dark, `#966000` light
+- Primary ink: `#20231d` light, `#f7f8f4` dark
+- Canvas: `#f7f7f3` light, `#121510` dark
+- Raised surface: `#ffffff` light, `#1b1f18` dark
+- Hairline: `#d9ddd5` light, `#353d31` dark
+- Muted text: `#6c7367` light, `#a6ada0` dark
+- Product primary: tennis-ball green `#ccff00`
+- Primary hover: `#b7e500`
+- Primary ink: `#20231d`; never place white text on the tennis green
 - Success mint: `#066544` light, `#6bd8af` dark
-- Warning: competition orange plus explicit warning text
-- Error: `#d30005` light, `#fb7185` dark
-- Info: `#1151ff` light, `#93c5fd` dark
+- Warning: restrained amber plus explicit warning text
+- Error: restrained red plus explicit error text
 
-Use classic blue for primary actions, navigation, selection, and key totals. Use classic orange for urgency, countdowns, commissioner attention, and high-energy moments. Gold is reserved for winners and exceptional milestones. Reserve mint for explicit success states. Team logos should still provide most of the page-level color.
+Tennis green is the only product accent. Use it for primary actions, selected navigation, the active draft state, focus, and key totals. Do not introduce a second decorative accent. Reserve mint, amber, and red strictly for success, warning, and error states. Team logos provide the rest of the page-level color.
 
 ## Typography
 
@@ -54,10 +51,12 @@ Use classic blue for primary actions, navigation, selection, and key totals. Use
 
 ## Shape and depth
 
-- Content sections are flat and separated by spacing or a 1px hairline.
+- Content cards use a 16px radius, a complete 1px border, and a quiet surface fill.
+- Controls use a 12px radius and a minimum 44px touch target.
+- Nested data rows use a 12px radius only when they are individually actionable or selectable.
 - Do not stack multiple rounded cards inside rounded cards.
-- Data cards use 0–12px radius; editorial moments may be square.
-- Buttons, filters, status chips, and compact controls may be full pills.
+- Full pills are reserved for filters, statuses, avatars, and rank markers. They are not the default button shape.
+- Adjacent surfaces at the same hierarchy must use the same radius and border treatment.
 - Avoid decorative drop shadows and gradients. Use contrast, scale, and team imagery for depth.
 
 ## Components
@@ -70,8 +69,8 @@ Use classic blue for primary actions, navigation, selection, and key totals. Use
 
 ### Buttons
 
-- Primary: high-contrast filled pill, 48px minimum height.
-- Secondary: quiet surface pill.
+- Primary: tennis-green fill, soft-black label, 12px radius, 48px preferred height.
+- Secondary: quiet surface, complete hairline border, soft-black or warm-white label, 12px radius.
 - Destructive: red only at the point of destructive action.
 - Do not present several equally loud primary buttons in one region.
 
@@ -109,4 +108,4 @@ Use classic blue for primary actions, navigation, selection, and key totals. Use
 
 ## Inspiration
 
-Adapted for this product from the publicly documented monochrome, typography, spacing, and component principles in the Nike-inspired DESIGN.md maintained by the awesome-design-md project. This is a product-specific interpretation, not a reproduction.
+The system is informed by approachable marketplace products: generous whitespace, friendly geometry, obvious actions, calm neutral surfaces, and concise feedback. This is a product-specific interpretation, not a reproduction of another company’s design system.

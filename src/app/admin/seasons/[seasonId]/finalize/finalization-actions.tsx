@@ -46,7 +46,7 @@ export default function FinalizationActions({
 
   if (status === 'FINALIZED') {
     return (
-      <section className="border-t border-orange-500/30 bg-orange-500/5 p-5">
+      <section className="rounded-2xl border border-amber-300/30 bg-amber-300/5 p-5">
         <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-600">Correction control</p>
         <h2 className="mt-2 text-xl font-black">Reopen finalized season</h2>
         {successorYear ? (
@@ -83,7 +83,7 @@ export default function FinalizationActions({
   }
 
   return (
-    <section className="border-t border-blue-500/30 bg-blue-500/5 p-5">
+    <section className="rounded-2xl border border-blue-500/30 bg-blue-500/5 p-5">
       <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Final confirmation</p>
       <h2 className="mt-2 text-xl font-black">Freeze the season</h2>
       <p className="mt-2 max-w-2xl text-sm text-slate-500">

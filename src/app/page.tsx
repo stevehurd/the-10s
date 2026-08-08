@@ -205,10 +205,10 @@ export default async function Home({
         </div>
 
         {previewAllowed ? (
-          <section className="mb-6 rounded-2xl border border-dashed border-amber-300/30 bg-amber-300/5 p-4">
+          <section className="mb-6 rounded-2xl border border-dashed border-white/15 bg-white/5 p-4">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">Development preview</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-300">Development preview</p>
                 <p className="mt-1 text-sm text-slate-400">Preview dashboard phases without changing any season data.</p>
                 {query.seeded === 'dashboard-states' ? <p className="mt-2 text-sm font-bold text-emerald-300">Stress-test seasons are ready in the season selector.</p> : null}
               </div>
@@ -227,7 +227,7 @@ export default async function Home({
                   return (
                     <Link
                       aria-current={selected ? 'page' : undefined}
-                      className={`rounded-lg px-3 py-2 text-sm font-bold transition ${selected ? 'bg-amber-300 text-amber-950' : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                      className={`rounded-lg px-3 py-2 text-sm font-bold transition ${selected ? 'bg-blue-600' : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
                       href={href}
                       key={option.label}
                     >
@@ -237,7 +237,7 @@ export default async function Home({
                 })}
               </nav>
               <form action="/api/admin/seed-dashboard-states" method="post">
-                <button className="rounded-lg border border-amber-300/30 px-3 py-2 text-sm font-bold text-amber-200 transition hover:bg-amber-300/10" type="submit">Seed stress-test seasons</button>
+                <button className="rounded-lg border border-blue-500/30 px-3 py-2 text-sm font-bold text-blue-300 transition hover:bg-blue-500/10" type="submit">Seed stress-test seasons</button>
               </form>
               </div>
             </div>
@@ -272,9 +272,9 @@ export default async function Home({
         ) : null}
 
         {champion ? (
-          <section className="mb-7 overflow-hidden rounded-3xl border border-amber-300/30 bg-amber-300/10 p-7 text-center">
+          <section className="mb-7 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-7 text-center">
             <p className="text-5xl">🏆</p>
-            <p className="mt-3 text-xs font-bold uppercase tracking-[0.24em] text-amber-300">{selectedSeason.year} champion</p>
+            <p className="mt-3 text-xs font-bold uppercase tracking-[0.24em] text-blue-300">{selectedSeason.year} champion</p>
             <h3 className="mt-2 text-4xl font-black">{playerDisplayName(champion.user.name, champion.poolSeat.label)}</h3>
             {championNickname ? <p className="mt-1 text-sm font-semibold text-slate-400">{champion.user.name}</p> : null}
             <p className="mt-2 text-lg text-slate-300">{champion.totalWins} wins</p>
@@ -370,7 +370,7 @@ export default async function Home({
               return (
                 <article className={`px-4 py-5 sm:px-5 ${isViewer ? 'bg-blue-500/10' : ''}`} key={participant.id}>
                   <div className="grid grid-cols-[44px_1fr_auto] items-center gap-3">
-                    <span className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-black ${index === 0 ? 'bg-amber-300 text-amber-950' : 'bg-white/5 text-slate-300'}`}>{index + 1}</span>
+                    <span className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-black ${index === 0 ? 'bg-blue-600' : 'bg-white/5 text-slate-300'}`}>{index + 1}</span>
                     <div className="min-w-0">
                       <p className="truncate text-lg font-bold">{playerDisplayName(participant.user.name, participant.poolSeat.label)}{isViewer ? ' · You' : ''}</p>
                       {nickname ? <p className="truncate text-sm text-slate-500">{participant.user.name}</p> : null}

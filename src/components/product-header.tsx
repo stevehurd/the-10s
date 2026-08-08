@@ -54,7 +54,7 @@ export function SeasonStageTracker({ activeStage }: { activeStage: 'SETUP' | 'KE
   ] as const
   const activeIndex = stages.findIndex((stage) => stage.key === activeStage)
   return (
-    <div className="grid grid-cols-4 overflow-hidden border border-white/10 bg-slate-900">
+    <div className="grid grid-cols-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
       {stages.map((stage, index) => (
         <div className={`relative px-2 py-3 text-center ${index <= activeIndex ? 'bg-slate-900 text-slate-100' : 'text-slate-400'}`} key={stage.key}>
           <span className={`mx-auto mb-1 grid h-6 w-6 place-items-center rounded-full text-xs font-black ${index < activeIndex ? 'bg-blue-500 text-white' : index === activeIndex ? 'border-2 border-orange-400 text-orange-300' : 'bg-slate-100 text-slate-400'}`}>{index < activeIndex ? '✓' : index + 1}</span>

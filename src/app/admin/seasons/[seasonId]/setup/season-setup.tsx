@@ -91,7 +91,7 @@ export default function SeasonSetup({ seasonId, participants: initialParticipant
       {draftConfigured && <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">A draft is already configured. Participant, order, and override changes are locked until its rehearsal is deleted or official draft is canceled.</p>}
       {message && <p className="rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-900">{message}</p>}
 
-      <section className="border-y border-white/10 bg-slate-900 p-5">
+      <section className="rounded-2xl border border-white/10 bg-slate-900 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h2 className="text-xl font-bold">Base draft order</h2><p className="text-sm text-slate-600">Position 1 picks first in round one; the order snakes each round.</p></div>
           <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={draftConfigured || busy !== null} onClick={saveOrder}>Save order</button>
@@ -119,7 +119,7 @@ export default function SeasonSetup({ seasonId, participants: initialParticipant
         </div>
       </section>
 
-      <section className="border-y border-white/10 bg-slate-900 p-5">
+      <section className="rounded-2xl border border-white/10 bg-slate-900 p-5">
         <h2 className="text-xl font-bold">Add a new seat</h2>
         <p className="mt-1 text-sm text-slate-600">A new entrant starts with ten open slots and no inherited keepers.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_160px_auto] sm:items-end">
@@ -135,8 +135,8 @@ export default function SeasonSetup({ seasonId, participants: initialParticipant
           <Link className="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white" href="/demo">Back to draft demo</Link>
         ) : (
           <>
-            <Link className="rounded-full border border-white/10 bg-white/5 px-4 py-2 font-semibold" href={`/admin/seasons/${seasonId}/eligibility`}>Review team eligibility</Link>
-            <Link className="rounded-full border border-white/10 bg-white/5 px-4 py-2 font-semibold" href="/admin/users">Manage pool access</Link>
+            <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold" href={`/admin/seasons/${seasonId}/eligibility`}>Review team eligibility</Link>
+            <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold" href="/admin/users">Manage pool access</Link>
             <Link className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white" href="/admin/draft">Continue to draft control</Link>
           </>
         )}

@@ -90,7 +90,7 @@ export default function MemberManager() {
           <p className="mt-2 text-slate-600">Invite by email, see who has signed in, and assign commissioner access.</p>
         </div>
 
-        <form className="grid gap-4 border-y border-white/10 bg-slate-900 p-5 md:grid-cols-[1fr_1.4fr_180px_auto] md:items-end" onSubmit={invite}>
+        <form className="grid gap-4 rounded-2xl border border-white/10 bg-slate-900 p-5 md:grid-cols-[1fr_1.4fr_180px_auto] md:items-end" onSubmit={invite}>
           <Field label="Name"><input className="w-full rounded-lg border border-slate-300 px-3 py-2" value={name} onChange={(event) => setName(event.target.value)} required /></Field>
           <Field label="Email"><input className="w-full rounded-lg border border-slate-300 px-3 py-2" value={email} onChange={(event) => setEmail(event.target.value)} type="email" required /></Field>
           <Field label="Role"><select className="w-full rounded-lg border border-slate-300 bg-slate-900 px-3 py-2" value={role} onChange={(event) => setRole(event.target.value as typeof role)}><option value="MEMBER">Member</option><option value="COMMISSIONER">Commissioner</option></select></Field>
@@ -99,7 +99,7 @@ export default function MemberManager() {
 
         {message && <p aria-live="polite" className="rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-900">{message}</p>}
 
-        <section className="overflow-hidden border-y border-white/10 bg-slate-900">
+        <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
           {loading ? <p className="p-5 text-slate-500">Loading members…</p> : (
             <div className="divide-y divide-slate-100">
               {members.map((member) => (

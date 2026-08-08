@@ -156,7 +156,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
           </p>
         </div>
 
-        <section className="border-y border-white/10 bg-slate-900 p-4 sm:p-5">
+        <section className="rounded-2xl border border-white/10 bg-slate-900 p-4 sm:p-5">
           <label className="block max-w-xl text-sm font-semibold">
             Season to manage
             <select
@@ -173,7 +173,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
           </label>
         </section>
 
-        <section className="overflow-hidden border-y border-blue-500/25 bg-slate-900">
+        <section className="overflow-hidden rounded-2xl border border-blue-500/25 bg-slate-900">
           <div className="border-b border-blue-500/20 bg-blue-500/10 px-5 py-5 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -242,7 +242,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
                     <p className="mt-1 text-sm text-slate-500">{officialSession.startsAt ? new Date(officialSession.startsAt).toLocaleString() : 'Draft time not scheduled'}{officialSession.meetingUrl ? ' · Video call configured' : ''}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Link href={`/draft/${officialSession.id}`} className="rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white">
+                    <Link href={`/draft/${officialSession.id}`} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold">
                       Open official draft room
                     </Link>
                     {officialSession.status === 'SCHEDULED' && (
@@ -278,7 +278,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
           </div>
         </section>
 
-        <section className="border-y border-white/10 bg-white/5 p-5 sm:p-6">
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Commissioner testing</p>
@@ -286,11 +286,11 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
               <p className="mt-1 text-sm text-slate-600">Practice the complete draft flow using this season’s real order, keepers, team pool, clock, and autopick rules. Demo picks never affect official rosters.</p>
             </div>
             <div className="flex flex-wrap items-end gap-3">
-              <Link className="rounded-full border border-orange-500/40 px-4 py-2 text-sm font-semibold text-orange-600" href="/admin/draft/harness">
+              <Link className="rounded-xl border border-blue-500/40 px-4 py-2 text-sm font-semibold text-blue-300" href="/admin/draft/harness">
                 Open Draft Test Lab
               </Link>
               <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Demo pick clock<input className="mt-1 block w-36 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" max={900} min={10} type="number" value={demoPickSeconds} onChange={(event) => setDemoPickSeconds(Number(event.target.value))} /></label>
-              <button className="rounded-full border border-slate-400 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-50" disabled={!ready || busy !== null} onClick={() => createSession('REHEARSAL')}>
+              <button className="rounded-xl border border-slate-400 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-50" disabled={!ready || busy !== null} onClick={() => createSession('REHEARSAL')}>
                 {busy === 'create-REHEARSAL' ? 'Creating…' : 'Create demo draft'}
               </button>
             </div>
@@ -299,7 +299,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
           <div className="mt-5 space-y-3">
             {demoSessions.length === 0 ? <p className="border border-dashed border-slate-300 bg-white/5 px-4 py-5 text-sm text-slate-500">No demo drafts yet.</p> : null}
             {demoSessions.map((session) => (
-              <article key={session.id} className="border-t border-white/10 bg-slate-900 p-4">
+              <article key={session.id} className="rounded-2xl border border-white/10 bg-slate-900 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">{session.name}</h3><Badge>{session.status}</Badge></div><p className="mt-1 text-sm text-slate-600">{session.selectionCount}/{session.turnCount} picks · {session.pickSeconds}s clock</p></div>
                   <div className="flex flex-wrap gap-2">

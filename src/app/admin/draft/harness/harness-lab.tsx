@@ -104,7 +104,7 @@ export default function HarnessLab({ seasons }: { seasons: HarnessSeason[] }) {
 
   return (
     <div className="space-y-6">
-      <section className="border-y border-white/10 bg-slate-900 p-5">
+      <section className="rounded-2xl border border-white/10 bg-slate-900 p-5">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <label className="block max-w-xl flex-1 text-sm font-bold">
             Season under test
@@ -143,7 +143,7 @@ export default function HarnessLab({ seasons }: { seasons: HarnessSeason[] }) {
           {season.sessions.length === 0 ? (
             <div className="border border-dashed border-slate-400 p-6 text-sm text-slate-500">Create a fresh run to begin.</div>
           ) : season.sessions.map((session) => (
-            <article className="border-t border-white/10 bg-slate-900 p-5" key={session.id}>
+            <article className="rounded-2xl border border-white/10 bg-slate-900 p-5" key={session.id}>
               <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -179,7 +179,7 @@ export default function HarnessLab({ seasons }: { seasons: HarnessSeason[] }) {
 
 function Report({ report }: { report: HarnessReport }) {
   return (
-    <section className={`border-t p-5 ${report.passed ? 'border-blue-500 bg-blue-500/10' : 'border-red-500 bg-red-500/10'}`}>
+    <section className={`rounded-2xl border p-5 ${report.passed ? 'border-blue-500 bg-blue-500/10' : 'border-red-500 bg-red-500/10'}`}>
       <p className="text-xs font-black uppercase tracking-[0.18em]">Latest result</p>
       <h2 className="mt-1 text-xl font-black">{report.passed ? 'PASS' : 'FAIL'} · {report.scenario}</h2>
       <div className="mt-4 grid gap-2 md:grid-cols-2">

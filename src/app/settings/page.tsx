@@ -27,7 +27,7 @@ export default async function SettingsPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <ProductHeader
-        action={<form action="/auth/signout" method="post"><button className="rounded-full border border-white/10 px-4 py-2 text-sm font-bold text-slate-300 hover:bg-white/5" type="submit">Sign out</button></form>}
+        action={<form action="/auth/signout" method="post"><button className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-slate-300 hover:bg-white/5" type="submit">Sign out</button></form>}
         context={context.appUser.name}
         nav={[{ href: '/', label: 'Dashboard' }, { href: '/settings', label: 'Player settings', active: true }]}
       />

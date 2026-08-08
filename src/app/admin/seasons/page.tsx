@@ -41,7 +41,7 @@ export default async function SeasonsAdminPage() {
               (entry) => entry.leagueSnapshot === 'COLLEGE' && ['PENDING', 'REVIEW'].includes(entry.status),
             ).length
             return (
-              <article className="border-t border-white/10 bg-slate-900 p-5" key={season.id}>
+              <article className="rounded-2xl border border-white/10 bg-slate-900 p-5" key={season.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-blue-700">{season.pool?.name}</p>
@@ -75,5 +75,5 @@ export default async function SeasonsAdminPage() {
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {
-  return <div className="bg-white/5 px-2 py-3"><p className="text-lg font-black">{value}</p><p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p></div>
+  return <div className="rounded-lg bg-white/5 px-2 py-3"><p className="text-lg font-black">{value}</p><p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p></div>
 }

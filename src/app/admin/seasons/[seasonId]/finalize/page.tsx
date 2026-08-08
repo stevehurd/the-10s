@@ -41,7 +41,7 @@ export default async function SeasonFinalizationPage({
           </div>
         </div>
 
-        <section className="border-t border-white/10 bg-slate-900 p-5">
+        <section className="rounded-2xl border border-white/10 bg-slate-900 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Readiness</p>
@@ -60,7 +60,7 @@ export default async function SeasonFinalizationPage({
           )}
         </section>
 
-        <section className="overflow-hidden border-t border-white/10 bg-slate-900">
+        <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
           <div className="border-b border-white/10 px-5 py-4">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Final standings preview</p>
             <h2 className="mt-1 text-xl font-black">League table</h2>

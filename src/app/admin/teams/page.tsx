@@ -119,7 +119,7 @@ export default function TeamsPage() {
           /* College teams grouped by conference */
           <div className="space-y-8">
             {sortedConferences.map(conference => (
-              <section key={conference} className="overflow-hidden border-y border-white/10 bg-slate-900">
+              <section key={conference} className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
                 <div className="border-b border-orange-400/20 bg-orange-400/10 px-6 py-4">
                   <h2 className="text-xl font-bold">{conference}</h2>
                   <p className="mt-1 text-sm text-slate-400">

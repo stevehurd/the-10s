@@ -51,7 +51,7 @@ export default async function AdminPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <section className="overflow-hidden border-y border-white/10 bg-slate-900 text-slate-100">
+        <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900 text-slate-100">
           <div className="grid gap-8 p-6 md:grid-cols-[1.25fr_.75fr] md:p-9">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-300">Commissioner HQ</p>
@@ -62,8 +62,8 @@ export default async function AdminPage() {
                   : 'Create a season to begin assigning seats, reviewing teams, and preparing the draft.'}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link className="rounded-full bg-blue-600 px-6 py-3 font-black text-white" href={season ? `/admin/seasons/${season.id}/setup` : '/admin/seasons'}>{season ? 'Continue season setup' : 'Create season'}</Link>
-                <Link className="rounded-full border border-white/15 bg-white/5 px-6 py-3 font-bold" href="/admin/draft">Open draft controls</Link>
+                <Link className="rounded-xl bg-blue-600 px-6 py-3 font-black" href={season ? `/admin/seasons/${season.id}/setup` : '/admin/seasons'}>{season ? 'Continue season setup' : 'Create season'}</Link>
+                <Link className="rounded-xl border border-white/15 bg-white/5 px-6 py-3 font-bold" href="/admin/draft">Open draft controls</Link>
               </div>
             </div>
             <div className="self-center"><SeasonStageTracker activeStage={stage} /></div>
@@ -78,7 +78,7 @@ export default async function AdminPage() {
         </section>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.25fr_.75fr]">
-          <section className="border-y border-white/10 bg-slate-900 p-5">
+          <section className="rounded-2xl border border-white/10 bg-slate-900 p-5">
             <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Next actions</p><h2 className="mt-1 text-xl font-black">Get draft-ready</h2></div><span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">Commissioner</span></div>
             <div className="mt-5 space-y-3">
               <ActionRow done={Boolean(season && season.participants.length > 0)} href={season ? `/admin/seasons/${season.id}/setup` : '/admin/seasons'} label="Confirm participants and base draft order" />
@@ -88,7 +88,7 @@ export default async function AdminPage() {
             </div>
           </section>
 
-          <section className="border-y border-white/10 bg-slate-900 p-5">
+          <section className="rounded-2xl border border-white/10 bg-slate-900 p-5">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Audit trail</p>
             <h2 className="mt-1 text-xl font-black">Recent activity</h2>
             <div className="mt-5 space-y-4">
@@ -108,7 +108,7 @@ export default async function AdminPage() {
 }
 
 function StatCard({ label, value, detail, warning = false }: { label: string; value: string | number; detail: string; warning?: boolean }) {
-  return <div className="border-t border-white/10 bg-slate-900 p-5"><div className="flex items-start justify-between"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p><span className={`h-2.5 w-2.5 rounded-full ${warning ? 'bg-orange-400' : 'bg-blue-500'}`} /></div><p className="mt-3 text-2xl font-black">{value}</p><p className="mt-1 text-xs text-slate-500">{detail}</p></div>
+  return <div className="rounded-2xl border border-white/10 bg-slate-900 p-5"><div className="flex items-start justify-between"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p><span className={`h-2.5 w-2.5 rounded-full ${warning ? 'bg-amber-300' : 'bg-blue-500'}`} /></div><p className="mt-3 text-2xl font-black">{value}</p><p className="mt-1 text-xs text-slate-500">{detail}</p></div>
 }
 
 function ActionRow({ done, href, label }: { done: boolean; href: string; label: string }) {
