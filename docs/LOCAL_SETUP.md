@@ -33,6 +33,14 @@ Create a 1Password item named `Football Pool Development` with these fields:
 - `SPORTSDATA_API_KEY`
 - `CRON_SECRET`
 
+After a sending domain is configured, also add these optional server-only
+invitation fields:
+
+- `INVITATION_EMAIL_ENABLED`
+- `RESEND_API_KEY` (use a sending-only key)
+- `RESEND_FROM_EMAIL`
+- `APP_URL`
+
 Create an ignored `.env.op` file containing only references, not values:
 
 ```dotenv
@@ -57,6 +65,11 @@ op run --env-file=.env.op -- npm run dev
 The SportsDataIO seed refuses incomplete feeds before opening its database transaction. It expects 32 active NFL teams and 120-160 active FBS teams. It resets only the pool with slug `the-10s-development`; never use the command with production database URLs.
 
 The public Supabase URL and publishable key are intentionally browser-safe. Database URLs, SportsDataIO keys, cron secrets, SMTP passwords, and any Supabase secret/service-role key are server-only. The application does not require a service-role key.
+
+Invitation delivery stays disabled unless all four optional invitation fields
+are configured and `INVITATION_EMAIL_ENABLED` is exactly `true`. Resend SMTP
+credentials belong in Supabase for OTP delivery; the restricted Resend API key
+belongs in the application server environment for the initial invitation CTA.
 
 AI tools working in this repository are prohibited from invoking or reading 1Password references without explicit approval. A human can use the commands normally.
 

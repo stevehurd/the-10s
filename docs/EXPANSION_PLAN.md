@@ -75,11 +75,24 @@ Implemented in development:
   metadata.
 - Unclaimed profiles remain visible in historical standings but have no
   authenticated access.
+- Invitation delivery now has explicit `NEEDS_EMAIL`, `READY_TO_INVITE`,
+  `INVITATION_SENT`, `SEND_FAILED`, and `JOINED` states backed by additive,
+  nullable timestamps and an attempt counter. Saving an address never implies
+  that a message was sent.
+- The commissioner UI exposes send, resend, and retry controls while delivery
+  remains visibly disabled until a verified domain and Resend configuration
+  are present. The invitation CTA opens a prefilled OTP login; it never embeds
+  an auth token.
+- Invitation send requests are commissioner-only, idempotent per player and
+  attempt, and audited without storing provider responses or credentials.
 
 Remaining before member onboarding:
 
 - Exercise the full Supabase OTP claim with a real legacy-player address in
   development once outbound email is configured.
+- Verify a sending domain, connect Resend to Supabase SMTP for OTP delivery,
+  and add the server-only Resend invitation variables documented in
+  `.env.example` before enabling outbound invitations.
 - Add a separate, explicit account-recovery workflow before allowing the email
   or auth identity on a claimed profile to change.
 

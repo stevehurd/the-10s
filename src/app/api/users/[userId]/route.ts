@@ -2,12 +2,29 @@ import { NextResponse } from 'next/server'
 
 import { authorizeApi } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
-import { LegacyInvitationError, planLegacyInvitationChange } from '@/lib/legacy-invitation-rules'
+import {
+  LegacyInvitationError,
+  legacyInvitationState,
+  planLegacyInvitationChange,
+} from '@/lib/legacy-invitation-rules'
 
 async function scopedMembership(userId: string, poolId: string) {
   return prisma.poolMembership.findUnique({
     where: { poolId_userId: { poolId, userId } },
-    include: { user: { select: { id: true, name: true, email: true, authUserId: true } } },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          authUserId: true,
+          invitationSentAt: true,
+          invitationFailedAt: true,
+          invitationClaimedAt: true,
+          invitationSendAttempts: true,
+        },
+      },
+    },
   })
 }
 
@@ -55,8 +72,21 @@ export async function PATCH(
       const updated = await prisma.$transaction(async (tx) => {
         const user = await tx.user.update({
           where: { id: userId },
-          data: { email: change.email },
-          select: { id: true, name: true, email: true, authUserId: true },
+          data: {
+            email: change.email,
+            invitationSentAt: null,
+            invitationFailedAt: null,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            authUserId: true,
+            invitationSentAt: true,
+            invitationFailedAt: true,
+            invitationClaimedAt: true,
+            invitationSendAttempts: true,
+          },
         })
         await tx.auditEvent.create({
           data: {
@@ -74,9 +104,15 @@ export async function PATCH(
         return user
       })
       return NextResponse.json({
-        ...updated,
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
         hasSignedIn: Boolean(updated.authUserId),
-        invitationState: change.nextState,
+        invitationState: legacyInvitationState(updated),
+        invitationSentAt: updated.invitationSentAt,
+        invitationFailedAt: updated.invitationFailedAt,
+        invitationClaimedAt: updated.invitationClaimedAt,
+        invitationSendAttempts: updated.invitationSendAttempts,
       })
     } catch (error) {
       if (error instanceof LegacyInvitationError) {

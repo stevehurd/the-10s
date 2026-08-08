@@ -12,6 +12,10 @@
     {
       "id": "20260807010000_draft_logistics",
       "sha256": "690099ebb9c00ea1740bd79ed6ad64f6aaa0851b8dd78be544ce846dedd89a61"
+    },
+    {
+      "id": "20260808000000_invitation_delivery",
+      "sha256": "dbb97509f60ae111f59121806259ab6636f92651b40e8f221bca8f250f64dc5c"
     }
   ]
 }

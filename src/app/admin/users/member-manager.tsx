@@ -11,7 +11,16 @@ interface Member {
   role: 'MEMBER' | 'COMMISSIONER'
   status: string
   hasSignedIn: boolean
-  invitationState: 'UNCLAIMED' | 'INVITED' | 'CLAIMED'
+  invitationState: 'NEEDS_EMAIL' | 'READY_TO_INVITE' | 'INVITATION_SENT' | 'SEND_FAILED' | 'JOINED'
+  invitationSentAt: string | null
+  invitationFailedAt: string | null
+  invitationClaimedAt: string | null
+  invitationSendAttempts: number
+}
+
+interface InvitationDelivery {
+  enabled: boolean
+  message: string
 }
 
 async function getError(response: Response) {
@@ -29,12 +38,23 @@ export default function MemberManager() {
   const [message, setMessage] = useState<string | null>(null)
   const [editingInvitationId, setEditingInvitationId] = useState<string | null>(null)
   const [invitationEmail, setInvitationEmail] = useState('')
+  const [invitationDelivery, setInvitationDelivery] = useState<InvitationDelivery>({
+    enabled: false,
+    message: 'Checking invitation email setup…',
+  })
   const activeMembers = members.filter((member) => member.status === 'ACTIVE')
-  const pendingInvitationCount = activeMembers.filter((member) => member.invitationState !== 'CLAIMED').length
+  const pendingInvitationCount = activeMembers.filter((member) => member.invitationState !== 'JOINED').length
 
   async function load() {
     const response = await fetch('/api/users')
-    if (response.ok) setMembers((await response.json()) as Member[])
+    if (response.ok) {
+      const result = (await response.json()) as {
+        members: Member[]
+        invitationDelivery: InvitationDelivery
+      }
+      setMembers(result.members)
+      setInvitationDelivery(result.invitationDelivery)
+    }
     else setMessage(await getError(response))
     setLoading(false)
   }
@@ -57,7 +77,7 @@ export default function MemberManager() {
       setName('')
       setEmail('')
       setRole('MEMBER')
-      setMessage('Member is ready. Send them the normal sign-in link; their first verified code links this profile.')
+      setMessage('Player added. Their sign-in email is ready for an invitation.')
       await load()
     } else setMessage(await getError(response))
     setBusy(null)
@@ -105,8 +125,19 @@ export default function MemberManager() {
       setEditingInvitationId(null)
       setInvitationEmail('')
       setMessage(nextEmail
-        ? `${member.name} can now claim this historical profile by signing in with ${nextEmail.trim().toLowerCase()}. Share the normal sign-in link with them; this assignment did not send an email.`
-        : `${member.name}’s invitation email was removed.`)
+        ? `${member.name}’s sign-in email is saved. No email was sent.`
+        : `${member.name}’s sign-in email was removed.`)
+      await load()
+    } else setMessage(await getError(response))
+    setBusy(null)
+  }
+
+  async function sendInvitation(member: Member) {
+    setBusy(`send:${member.id}`)
+    setMessage(null)
+    const response = await fetch(`/api/users/${member.id}/invitation`, { method: 'POST' })
+    if (response.ok) {
+      setMessage(`Invitation sent to ${member.email}.`)
       await load()
     } else setMessage(await getError(response))
     setBusy(null)
@@ -125,12 +156,16 @@ export default function MemberManager() {
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">Legacy player invitations</p>
             <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
               <div>
-                <h2 className="text-xl font-black">{activeMembers.filter((member) => member.invitationState === 'UNCLAIMED').length} players need a sign-in email</h2>
-                <p className="mt-1 max-w-2xl text-sm text-slate-400">Assign the email that each person will use for OTP sign-in. Their first verified code claims the existing profile and all of its historical rosters. Assignment does not send an email, so share the normal sign-in link with them.</p>
+                <h2 className="text-xl font-black">{pendingInvitationCount} players still need to join</h2>
+                <p className="mt-1 max-w-2xl text-sm text-slate-400">Assign each player’s sign-in email, then send their invitation. Their first verified code claims the existing profile and all of its historical rosters.</p>
+                {!invitationDelivery.enabled && <p className="mt-3 text-sm font-semibold text-amber-800">{invitationDelivery.message}</p>}
               </div>
-              <div className="flex gap-2 text-xs font-bold uppercase tracking-wide">
-                <span className="rounded-full bg-slate-800 px-3 py-1.5 text-slate-300">{activeMembers.filter((member) => member.invitationState === 'INVITED').length} waiting</span>
-                <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-700">{activeMembers.filter((member) => member.invitationState === 'CLAIMED').length} claimed</span>
+              <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-wide">
+                <span className="rounded-full bg-red-50 px-3 py-1.5 text-red-700">{activeMembers.filter((member) => member.invitationState === 'NEEDS_EMAIL').length} need email</span>
+                <span className="rounded-full bg-white px-3 py-1.5 text-slate-700">{activeMembers.filter((member) => member.invitationState === 'READY_TO_INVITE').length} ready</span>
+                <span className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-800">{activeMembers.filter((member) => member.invitationState === 'INVITATION_SENT').length} sent</span>
+                <span className="rounded-full bg-red-100 px-3 py-1.5 text-red-800">{activeMembers.filter((member) => member.invitationState === 'SEND_FAILED').length} failed</span>
+                <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-700">{activeMembers.filter((member) => member.invitationState === 'JOINED').length} joined</span>
               </div>
             </div>
           </section>
@@ -139,8 +174,8 @@ export default function MemberManager() {
         <form className="grid gap-4 rounded-2xl border border-white/10 bg-slate-900 p-5 md:grid-cols-[1fr_1.4fr_180px_auto] md:items-end" onSubmit={invite}>
           <div className="md:col-span-4">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">New pool member</p>
-            <h2 className="mt-1 text-xl font-black">Invite someone to the pool</h2>
-            <p className="mt-1 text-sm text-slate-500">Only use this for someone without a legacy profile. Existing players should receive an email assignment below.</p>
+            <h2 className="mt-1 text-xl font-black">Add someone to the pool</h2>
+            <p className="mt-1 text-sm text-slate-500">Only use this for someone without a legacy profile. Existing players should have their sign-in email assigned below.</p>
           </div>
           <Field label="Name"><input className="w-full rounded-lg border border-slate-300 px-3 py-2" value={name} onChange={(event) => setName(event.target.value)} required /></Field>
           <Field label="Email"><input className="w-full rounded-lg border border-slate-300 px-3 py-2" value={email} onChange={(event) => setEmail(event.target.value)} type="email" required /></Field>
@@ -167,9 +202,29 @@ export default function MemberManager() {
                         <span className="rounded-full bg-slate-800 px-2 py-1 text-slate-300">{member.role === 'COMMISSIONER' ? 'Commissioner' : 'Member'}</span>
                         <InvitationBadge state={member.invitationState} />
                       </div>
+                      <InvitationProgress member={member} />
                     </div>
                     {member.status === 'ACTIVE' && <div className="flex flex-wrap gap-2">
-                      {member.invitationState !== 'CLAIMED' && <button className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold disabled:opacity-50" data-testid={`edit-invitation-${member.id}`} disabled={busy !== null} onClick={() => editInvitation(member)} type="button">{member.invitationState === 'UNCLAIMED' ? 'Assign email' : 'Edit invitation'}</button>}
+                      {member.invitationState !== 'JOINED' && <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold disabled:opacity-50" data-testid={`edit-invitation-${member.id}`} disabled={busy !== null} onClick={() => editInvitation(member)} type="button">{member.invitationState === 'NEEDS_EMAIL' ? 'Assign email' : 'Update email'}</button>}
+                      {member.invitationState !== 'JOINED' && member.invitationState !== 'NEEDS_EMAIL' && (
+                        <button
+                          className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={busy !== null || !invitationDelivery.enabled}
+                          onClick={() => void sendInvitation(member)}
+                          title={invitationDelivery.enabled ? undefined : invitationDelivery.message}
+                          type="button"
+                        >
+                          {busy === `send:${member.id}`
+                            ? 'Sending…'
+                            : !invitationDelivery.enabled
+                              ? 'Email setup required'
+                              : member.invitationState === 'INVITATION_SENT'
+                                ? 'Resend invitation'
+                                : member.invitationState === 'SEND_FAILED'
+                                  ? 'Retry invitation'
+                                  : 'Send invitation'}
+                        </button>
+                      )}
                       <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled={busy !== null} onClick={() => changeRole(member)} type="button">{member.role === 'COMMISSIONER' ? 'Make member' : 'Make commissioner'}</button>
                       <button className="rounded-xl px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50" disabled={busy !== null} onClick={() => remove(member)} type="button">Remove access</button>
                     </div>}
@@ -177,13 +232,13 @@ export default function MemberManager() {
 
                   {editingInvitationId === member.id && (
                     <form className="mt-4 rounded-xl border border-blue-400/30 bg-slate-950 p-4" onSubmit={(event) => { event.preventDefault(); void updateInvitation(member, invitationEmail) }}>
-                      <p className="font-bold">Assign {member.name}’s sign-in email</p>
-                      <p className="mt-1 text-sm text-slate-400">Double-check the person and address. Whoever verifies this email will claim {member.name}’s historical roster. This saves access but does not send an email.</p>
+                      <p className="font-bold">{member.email ? 'Update' : 'Assign'} {member.name}’s sign-in email</p>
+                      <p className="mt-1 text-sm text-slate-400">Double-check the person and address. Whoever verifies this email will claim {member.name}’s historical roster. Saving the address does not send an email.</p>
                       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                         <input aria-label={`${member.name} invitation email`} autoFocus className="min-w-0 flex-1 rounded-lg border border-slate-700 px-3 py-2" onChange={(event) => setInvitationEmail(event.target.value)} placeholder="player@example.com" required type="email" value={invitationEmail} />
-                        <button className="rounded-xl bg-blue-600 px-4 py-2 font-semibold disabled:opacity-50" disabled={busy !== null} type="submit">{busy === `invitation:${member.id}` ? 'Saving…' : 'Confirm invitation'}</button>
+                        <button className="rounded-xl bg-blue-600 px-4 py-2 font-semibold disabled:opacity-50" disabled={busy !== null} type="submit">{busy === `invitation:${member.id}` ? 'Saving…' : 'Save email'}</button>
                         <button className="rounded-xl border border-white/10 px-4 py-2 font-semibold" disabled={busy !== null} onClick={() => setEditingInvitationId(null)} type="button">Cancel</button>
-                        {member.invitationState === 'INVITED' && <button className="rounded-xl px-4 py-2 font-semibold text-red-700 disabled:opacity-50" disabled={busy !== null} onClick={() => { if (window.confirm(`Remove ${member.name}’s invitation email?`)) void updateInvitation(member, null) }} type="button">Remove email</button>}
+                        {member.invitationState !== 'NEEDS_EMAIL' && <button className="rounded-xl px-4 py-2 font-semibold text-red-700 disabled:opacity-50" disabled={busy !== null} onClick={() => { if (window.confirm(`Remove ${member.name}’s sign-in email?`)) void updateInvitation(member, null) }} type="button">Remove email</button>}
                       </div>
                     </form>
                   )}
@@ -198,9 +253,31 @@ export default function MemberManager() {
 }
 
 function InvitationBadge({ state }: { state: Member['invitationState'] }) {
-  if (state === 'CLAIMED') return <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">Claimed</span>
-  if (state === 'INVITED') return <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700">Waiting for sign-in</span>
-  return <span className="rounded-full bg-red-50 px-2 py-1 text-red-700">Needs email</span>
+  if (state === 'JOINED') return <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">Joined</span>
+  if (state === 'INVITATION_SENT') return <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">Invitation sent</span>
+  if (state === 'SEND_FAILED') return <span className="rounded-full bg-red-50 px-2 py-1 text-red-700">Send failed</span>
+  if (state === 'READY_TO_INVITE') return <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-800">Ready to invite</span>
+  return <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">Needs email</span>
+}
+
+function InvitationProgress({ member }: { member: Member }) {
+  if (member.invitationState === 'JOINED' && member.invitationClaimedAt) {
+    return <p className="mt-2 text-xs text-slate-500">Joined {formatTimestamp(member.invitationClaimedAt)}</p>
+  }
+  if (member.invitationState === 'INVITATION_SENT' && member.invitationSentAt) {
+    return <p className="mt-2 text-xs text-slate-500">Last sent {formatTimestamp(member.invitationSentAt)} · {member.invitationSendAttempts} attempt{member.invitationSendAttempts === 1 ? '' : 's'}</p>
+  }
+  if (member.invitationState === 'SEND_FAILED' && member.invitationFailedAt) {
+    return <p className="mt-2 text-xs text-red-700">Last send failed {formatTimestamp(member.invitationFailedAt)} · retry when delivery is ready</p>
+  }
+  return null
+}
+
+function formatTimestamp(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

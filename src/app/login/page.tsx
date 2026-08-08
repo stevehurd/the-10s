@@ -18,8 +18,11 @@ export default function LoginPage() {
 function LoginForm() {
   const searchParams = useSearchParams()
   const supabase = useMemo(() => createClient(), [])
+  const invitedEmail = searchParams.get('invited') === 'true'
+    ? searchParams.get('email')?.trim().toLowerCase() ?? ''
+    : ''
   const [step, setStep] = useState<Step>('EMAIL')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(invitedEmail)
   const [code, setCode] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -78,6 +81,12 @@ function LoginForm() {
               No password needed. We&apos;ll email the invited address a one-time code.
             </p>
           </div>
+
+          {invitedEmail && step === 'EMAIL' ? (
+            <div className="mb-5 rounded-xl border border-blue-400/20 bg-blue-400/10 px-4 py-3 text-sm text-slate-200">
+              Your invitation is for <strong>{invitedEmail}</strong>. Use that address to connect your historical roster.
+            </div>
+          ) : null}
 
           {step === 'EMAIL' ? (
             <form className="space-y-5" onSubmit={requestCode}>

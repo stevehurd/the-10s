@@ -42,7 +42,11 @@ export async function getCurrentAppUser() {
       await prisma.$transaction(async (tx) => {
         const claim = await tx.user.updateMany({
           where: { id: invitedProfile.id, authUserId: null },
-          data: { authUserId: authUser.id },
+          data: {
+            authUserId: authUser.id,
+            invitationClaimedAt: new Date(),
+            invitationFailedAt: null,
+          },
         })
         if (claim.count === 1) {
           for (const membership of invitedProfile.memberships) {

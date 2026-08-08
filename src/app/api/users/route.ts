@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { authorizeApi } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
+import { invitationDeliveryAvailability } from '@/lib/invitation-delivery'
 import { legacyInvitationState } from '@/lib/legacy-invitation-rules'
 
 const MEMBER_ROLES = new Set(['MEMBER', 'COMMISSIONER'])
@@ -14,12 +15,24 @@ export async function GET() {
     where: { poolId: authorization.membership.poolId },
     orderBy: { user: { name: 'asc' } },
     include: {
-      user: { select: { id: true, name: true, email: true, authUserId: true } },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          authUserId: true,
+          invitationSentAt: true,
+          invitationFailedAt: true,
+          invitationClaimedAt: true,
+          invitationSendAttempts: true,
+        },
+      },
     },
   })
 
-  return NextResponse.json(
-    memberships.map((membership) => ({
+  return NextResponse.json({
+    invitationDelivery: invitationDeliveryAvailability(),
+    members: memberships.map((membership) => ({
       id: membership.user.id,
       name: membership.user.name,
       email: membership.user.email,
@@ -27,8 +40,12 @@ export async function GET() {
       status: membership.status,
       hasSignedIn: Boolean(membership.user.authUserId),
       invitationState: legacyInvitationState(membership.user),
+      invitationSentAt: membership.user.invitationSentAt,
+      invitationFailedAt: membership.user.invitationFailedAt,
+      invitationClaimedAt: membership.user.invitationClaimedAt,
+      invitationSendAttempts: membership.user.invitationSendAttempts,
     })),
-  )
+  })
 }
 
 export async function POST(request: Request) {
@@ -67,7 +84,7 @@ export async function POST(request: Request) {
       data: {
         poolId: authorization.membership.poolId,
         actorUserId: authorization.appUser.id,
-        action: existing ? 'POOL_MEMBER_REACTIVATED' : 'POOL_MEMBER_INVITED',
+        action: existing ? 'POOL_MEMBER_REACTIVATED' : 'POOL_MEMBER_ADDED',
         entityType: 'PoolMembership',
         entityId: membership.id,
         data: { userId: user.id, role },
@@ -85,6 +102,10 @@ export async function POST(request: Request) {
       status: result.membership.status,
       hasSignedIn: Boolean(result.user.authUserId),
       invitationState: legacyInvitationState(result.user),
+      invitationSentAt: result.user.invitationSentAt,
+      invitationFailedAt: result.user.invitationFailedAt,
+      invitationClaimedAt: result.user.invitationClaimedAt,
+      invitationSendAttempts: result.user.invitationSendAttempts,
     },
     { status: 201 },
   )

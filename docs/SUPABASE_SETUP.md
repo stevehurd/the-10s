@@ -33,7 +33,7 @@ In **Authentication**:
 5. In the Magic Link/OTP template, use `{{ .Token }}` rather than a confirmation link. The local version is [magic-link.html](../supabase/templates/magic-link.html).
 6. Keep anonymous and phone sign-ins disabled.
 
-Supabase's built-in hosted mailer is only suitable for initial testing: it has tight limits and may only send to project-team addresses. A custom SMTP provider is required before real pool members test sign-in. This does not require Twilio; Resend, Postmark, AWS SES, Brevo, and other SMTP providers work. Keep SMTP credentials in 1Password and configure them directly in Supabase—never in browser-exposed environment variables.
+Supabase's built-in hosted mailer is only suitable for initial testing: it has tight limits and may only send to project-team addresses. A custom SMTP provider is required before real pool members test sign-in. This does not require Twilio; Resend, Postmark, AWS SES, Brevo, and other SMTP providers work. Keep SMTP credentials in 1Password and configure them directly in Supabase—never in browser-exposed environment variables. The app's separate Resend sending-only API key powers the initial commissioner-triggered invitation; it is also server-only and remains disabled until the domain is ready.
 
 ## User access model
 

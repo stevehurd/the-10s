@@ -14,12 +14,16 @@ datasource db {
 // Authentication identities are owned by Supabase Auth. This profile stores
 // application data and links to auth.users through authUserId.
 model User {
-  id         String   @id @default(cuid())
-  authUserId String?  @unique @map("auth_user_id")
-  email      String?  @unique
-  name       String
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id                         String    @id @default(cuid())
+  authUserId                 String?   @unique @map("auth_user_id")
+  email                      String?   @unique
+  name                       String
+  invitationSentAt           DateTime? @map("invitation_sent_at")
+  invitationFailedAt         DateTime? @map("invitation_failed_at")
+  invitationClaimedAt        DateTime? @map("invitation_claimed_at")
+  invitationSendAttempts     Int       @default(0) @map("invitation_send_attempts")
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  updatedAt                  DateTime  @updatedAt @map("updated_at")
 
   // Legacy 2025 selections retained until the verified data migration.
   drafts Draft[]
