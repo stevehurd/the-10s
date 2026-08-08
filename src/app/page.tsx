@@ -5,7 +5,7 @@ import KeeperStatusCallout from '@/components/keeper-status-callout'
 import TeamMark from '@/components/team-mark'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
-import { playerDisplayName } from '@/lib/player-settings-rules'
+import { editableRosterNickname, playerDisplayName } from '@/lib/player-settings-rules'
 import { compareStandings } from '@/lib/standings-ranking'
 
 export const dynamic = 'force-dynamic'
@@ -140,6 +140,8 @@ export default async function Home({
     .map((participant) => ({
       id: participant.id,
       name: playerDisplayName(participant.user.name, participant.poolSeat.label),
+      playerName: participant.user.name,
+      hasNickname: Boolean(editableRosterNickname(participant.poolSeat.label)),
       isViewer: participant.userId === context.appUser.id,
       submitted: Boolean(participant.decisionsSubmittedAt),
       keptTeams: participant.rosterSlots
@@ -156,6 +158,7 @@ export default async function Home({
   const submittedKeeperCount = keeperTracker.filter((participant) => participant.submitted).length
   const rosterRecordByTeam = isPreseason ? priorRecordByTeam : recordByTeam
   const champion = isComplete ? standings[0] ?? null : null
+  const championNickname = champion ? editableRosterNickname(champion.poolSeat.label) : null
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -273,6 +276,7 @@ export default async function Home({
             <p className="text-5xl">🏆</p>
             <p className="mt-3 text-xs font-bold uppercase tracking-[0.24em] text-amber-300">{selectedSeason.year} champion</p>
             <h3 className="mt-2 text-4xl font-black">{playerDisplayName(champion.user.name, champion.poolSeat.label)}</h3>
+            {championNickname ? <p className="mt-1 text-sm font-semibold text-slate-400">{champion.user.name}</p> : null}
             <p className="mt-2 text-lg text-slate-300">{champion.totalWins} wins</p>
           </section>
         ) : isInSeason ? (
@@ -293,7 +297,7 @@ export default async function Home({
           <section className="mb-7 rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><h3 className="text-lg font-semibold">Round-one draft order</h3><p className="text-sm text-slate-400">Last place from last season picks first; round two reverses the order.</p></div><span className="text-xs font-bold uppercase tracking-wider text-slate-500">Snake draft</span></div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {keeperTracker.map((participant, index) => <div className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${participant.isViewer ? 'border-emerald-300/30 bg-emerald-300/10' : 'border-white/5 bg-slate-950/30'}`} key={participant.id}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-sm font-black">{index + 1}</span><p className="truncate font-semibold">{participant.name}{participant.isViewer ? ' · You' : ''}</p></div>)}
+              {keeperTracker.map((participant, index) => <div className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${participant.isViewer ? 'border-emerald-300/30 bg-emerald-300/10' : 'border-white/5 bg-slate-950/30'}`} key={participant.id}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-sm font-black">{index + 1}</span><div className="min-w-0"><p className="truncate font-semibold">{participant.name}{participant.isViewer ? ' · You' : ''}</p>{participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}</div></div>)}
             </div>
           </section>
         ) : null}
@@ -319,6 +323,7 @@ export default async function Home({
                       <p className="truncate font-semibold">
                         {participant.name}{participant.isViewer ? ' · You' : ''}
                       </p>
+                      {participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}
                       <p className="mt-0.5 text-xs text-slate-500">
                         {participant.submitted
                           ? `${participant.keptTeams.length} team${participant.keptTeams.length === 1 ? '' : 's'} kept`
@@ -361,12 +366,14 @@ export default async function Home({
           <div className="divide-y divide-white/5">
             {standings.map((participant, index) => {
               const isViewer = participant.userId === context.appUser.id
+              const nickname = editableRosterNickname(participant.poolSeat.label)
               return (
                 <article className={`px-4 py-5 sm:px-5 ${isViewer ? 'bg-emerald-300/10' : ''}`} key={participant.id}>
                   <div className="grid grid-cols-[44px_1fr_auto] items-center gap-3">
                     <span className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-black ${index === 0 ? 'bg-amber-300 text-amber-950' : 'bg-white/5 text-slate-300'}`}>{index + 1}</span>
                     <div className="min-w-0">
                       <p className="truncate text-lg font-bold">{playerDisplayName(participant.user.name, participant.poolSeat.label)}{isViewer ? ' · You' : ''}</p>
+                      {nickname ? <p className="truncate text-sm text-slate-500">{participant.user.name}</p> : null}
                     </div>
                     <div className="text-right">
                       <p className="text-4xl font-black leading-none tabular-nums text-emerald-300">{participant.totalWins}</p>
