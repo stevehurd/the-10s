@@ -58,6 +58,11 @@ export default async function SeasonsAdminPage() {
                   <Link className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white" href={`/admin/seasons/${season.id}/setup`}>Open setup</Link>
                   <Link className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold" href={`/admin/seasons/${season.id}/eligibility`}>Eligibility</Link>
                   <Link className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold" href="/admin/draft">Drafts</Link>
+                  {(season.status === 'ACTIVE' || season.status === 'FINALIZED') ? (
+                    <Link className="rounded-lg border border-orange-500/40 px-4 py-2 text-sm font-semibold text-orange-600" href={`/admin/seasons/${season.id}/finalize`}>
+                      {season.status === 'FINALIZED' ? 'Review final results' : 'Close season'}
+                    </Link>
+                  ) : null}
                 </div>
               </article>
             )

@@ -423,6 +423,9 @@ export async function undoLastDraftSelection(sessionId: string, actorUserId: str
       if (!session.season.poolId) {
         throw new DraftRuleError('Season is not assigned to a pool', 'MISSING_POOL')
       }
+      if (session.season.finalizedAt) {
+        throw new DraftRuleError('Reopen the finalized season before correcting its draft', 'SEASON_FINALIZED', 409)
+      }
 
       const undoPlan = planLastPickUndo(
         session.turns.map((turn) => ({
@@ -513,6 +516,9 @@ export async function makeDraftSelection(input: MakeSelectionInput) {
         include: { season: true },
       })
       if (!session) throw new DraftRuleError('Draft session not found', 'NOT_FOUND', 404)
+      if (session.season.finalizedAt) {
+        throw new DraftRuleError('Finalized season rosters are frozen', 'SEASON_FINALIZED', 409)
+      }
       if (session.status !== 'LIVE') {
         throw new DraftRuleError('The draft is not accepting picks', 'DRAFT_NOT_LIVE', 409)
       }

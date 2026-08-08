@@ -12,7 +12,6 @@ import {
 
 async function syncStanding(
   seasonId: string,
-  seasonIsActive: boolean,
   standing: CombinedStanding,
   league: 'NFL' | 'COLLEGE',
 ) {
@@ -31,8 +30,15 @@ async function syncStanding(
   })
   if (!team) throw new Error(`Team not found: ${standing.Team} (${standing.Key})`)
 
-  await prisma.$transaction([
-    prisma.teamSeasonRecord.upsert({
+  await prisma.$transaction(async (tx) => {
+    const season = await tx.season.findUnique({
+      where: { id: seasonId },
+      select: { status: true, finalizedAt: true },
+    })
+    if (!season) throw new Error('Season not found')
+    if (season.finalizedAt) throw new Error('Completed season standings are frozen')
+
+    await tx.teamSeasonRecord.upsert({
       where: { seasonId_teamId: { seasonId, teamId: team.id } },
       update: {
         wins: standing.Wins,
@@ -57,16 +63,14 @@ async function syncStanding(
         source: 'SPORTSDATAIO',
         sourceUpdatedAt: new Date(),
       },
-    }),
-    ...(seasonIsActive
-      ? [
-          prisma.team.update({
-            where: { id: team.id },
-            data: { wins: standing.Wins, losses: standing.Losses, ties: standing.Ties ?? 0 },
-          }),
-        ]
-      : []),
-  ])
+    })
+    if (season.status === 'ACTIVE') {
+      await tx.team.update({
+        where: { id: team.id },
+        data: { wins: standing.Wins, losses: standing.Losses, ties: standing.Ties ?? 0 },
+      })
+    }
+  })
 }
 
 export async function syncSeasonStandings(
@@ -90,7 +94,7 @@ export async function syncSeasonStandings(
       const combined = combineRegularAndPostseasonStandings(regular, postseason)
       for (const standing of combined) {
         try {
-          await syncStanding(season.id, season.status === 'ACTIVE', standing, 'NFL')
+          await syncStanding(season.id, standing, 'NFL')
           updatedTeams += 1
         } catch (error) {
           errors.push(error instanceof Error ? error.message : String(error))
@@ -111,7 +115,7 @@ export async function syncSeasonStandings(
       const combined = combineRegularAndPostseasonStandings(regular, postseason)
       for (const standing of combined) {
         try {
-          await syncStanding(season.id, season.status === 'ACTIVE', standing, 'COLLEGE')
+          await syncStanding(season.id, standing, 'COLLEGE')
           updatedTeams += 1
         } catch (error) {
           errors.push(error instanceof Error ? error.message : String(error))
