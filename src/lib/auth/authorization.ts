@@ -33,12 +33,31 @@ export async function getCurrentAppUser() {
   if (!appUser && authUser.email) {
     const invitedProfile = await prisma.user.findFirst({
       where: { email: { equals: authUser.email.trim(), mode: 'insensitive' } },
-      select: { id: true },
+      select: {
+        id: true,
+        memberships: { where: { status: 'ACTIVE' }, select: { poolId: true } },
+      },
     })
     if (invitedProfile) {
-      await prisma.user.updateMany({
-        where: { id: invitedProfile.id, authUserId: null },
-        data: { authUserId: authUser.id },
+      await prisma.$transaction(async (tx) => {
+        const claim = await tx.user.updateMany({
+          where: { id: invitedProfile.id, authUserId: null },
+          data: { authUserId: authUser.id },
+        })
+        if (claim.count === 1) {
+          for (const membership of invitedProfile.memberships) {
+            await tx.auditEvent.create({
+              data: {
+                poolId: membership.poolId,
+                actorUserId: invitedProfile.id,
+                action: 'LEGACY_PLAYER_PROFILE_CLAIMED',
+                entityType: 'User',
+                entityId: invitedProfile.id,
+                data: { provider: 'SUPABASE_EMAIL_OTP' },
+              },
+            })
+          }
+        }
       })
       appUser = await prisma.user.findUnique({
         where: { authUserId: authUser.id },

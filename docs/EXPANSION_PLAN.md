@@ -59,19 +59,29 @@ no email addresses. The historical migration therefore preserves those users
 and rosters without inventing contact information, and assigns the initial
 commissioner by immutable legacy user ID.
 
-Before member onboarding:
+Implemented in development:
 
-- Add a commissioner-only workflow to assign an invitation email to an
-  unclaimed legacy profile rather than creating a duplicate player.
-- Require the invited user to prove control of that address through Supabase
-  email OTP before linking `auth_user_id`.
-- Show both the legacy player name and proposed email before confirmation.
-- Reject duplicate emails, already-claimed profiles, and attempts to move an
-  auth identity between profiles without an explicit recovery workflow.
-- Audit invitation assignment, first successful claim, corrections, and
-  commissioner overrides without storing OTP codes or auth tokens.
-- Allow unclaimed profiles to remain visible in historical standings while
-  denying them authenticated access.
+- Commissioners can assign, correct, or remove an invitation email on an
+  unclaimed legacy profile instead of creating a duplicate player.
+- The invited user must prove control of the assigned address through Supabase
+  email OTP before `auth_user_id` is linked.
+- The UI shows the legacy player name and proposed email, distinguishes
+  unclaimed, waiting, and claimed profiles, and explains that assigning an
+  address does not itself send an email.
+- Duplicate emails, already-claimed profiles, and attempts to move an auth
+  identity between profiles are rejected.
+- Invitation assignment, correction, removal, and first successful claim are
+  audited without storing OTP codes, auth tokens, or email addresses in audit
+  metadata.
+- Unclaimed profiles remain visible in historical standings but have no
+  authenticated access.
+
+Remaining before member onboarding:
+
+- Exercise the full Supabase OTP claim with a real legacy-player address in
+  development once outbound email is configured.
+- Add a separate, explicit account-recovery workflow before allowing the email
+  or auth identity on a claimed profile to change.
 
 ### CFB historical standings and scoring parity — production comparison remains
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { authorizeApi } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
+import { legacyInvitationState } from '@/lib/legacy-invitation-rules'
 
 const MEMBER_ROLES = new Set(['MEMBER', 'COMMISSIONER'])
 
@@ -25,6 +26,7 @@ export async function GET() {
       role: membership.role,
       status: membership.status,
       hasSignedIn: Boolean(membership.user.authUserId),
+      invitationState: legacyInvitationState(membership.user),
     })),
   )
 }
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
       role: result.membership.role,
       status: result.membership.status,
       hasSignedIn: Boolean(result.user.authUserId),
+      invitationState: legacyInvitationState(result.user),
     },
     { status: 201 },
   )
