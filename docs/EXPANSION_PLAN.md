@@ -52,6 +52,27 @@ Standings rank by total wins, then the best single NFL team's win total, then th
 
 ## Outstanding data work
 
+### Legacy player invitation and identity claiming
+
+The verified 2025 production snapshot contains 15 complete legacy profiles but
+no email addresses. The historical migration therefore preserves those users
+and rosters without inventing contact information, and assigns the initial
+commissioner by immutable legacy user ID.
+
+Before member onboarding:
+
+- Add a commissioner-only workflow to assign an invitation email to an
+  unclaimed legacy profile rather than creating a duplicate player.
+- Require the invited user to prove control of that address through Supabase
+  email OTP before linking `auth_user_id`.
+- Show both the legacy player name and proposed email before confirmation.
+- Reject duplicate emails, already-claimed profiles, and attempts to move an
+  auth identity between profiles without an explicit recovery workflow.
+- Audit invitation assignment, first successful claim, corrections, and
+  commissioner overrides without storing OTP codes or auth tokens.
+- Allow unclaimed profiles to remain visible in historical standings while
+  denying them authenticated access.
+
 ### CFB historical standings and scoring parity — production comparison remains
 
 SportsDataIO documents season-specific schedules and separate regular/postseason standings. The application now calculates college records from final games returned by `Schedules/{season}` and rejects a payload containing another season, duplicate games, invalid final scores, or an implausible FBS catalog. It counts SeasonType 1 regular-season games (including conference championships when classified there) and SeasonType 3 bowls/College Football Playoff games. Ties are recorded without counting as wins. The unversioned `LeagueHierarchy` record is no longer used by production standings synchronization.
