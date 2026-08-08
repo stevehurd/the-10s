@@ -69,8 +69,8 @@ export default async function DraftPreparationPage({ params }: { params: Promise
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100">
       <div className="mx-auto max-w-7xl">
-        <Link className="text-sm font-semibold text-emerald-300 hover:text-emerald-200" href={`/?season=${season.id}`}>← Preseason hub</Link>
-        <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">{season.pool.name} · {season.name}</p>
+        <Link className="text-sm font-semibold text-blue-300 hover:text-blue-200" href={`/?season=${season.id}`}>← Preseason hub</Link>
+        <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-orange-300">{season.pool.name} · {season.name}</p>
         <h1 className="mt-2 text-3xl font-black">Draft preparation</h1>
         <p className="mt-2 max-w-3xl text-slate-400">Compare the approved team pool using last season&apos;s record. Keeper decisions update availability automatically.</p>
         {viewerParticipant ? (

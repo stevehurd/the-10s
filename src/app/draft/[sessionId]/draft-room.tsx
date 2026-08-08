@@ -341,7 +341,7 @@ export default function DraftRoom({
         <div className="mx-auto grid max-w-[1600px] gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
           <div className="flex items-center gap-3">
             <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">
               {state.session.season.name} · Round {round}
             </p>
             <h1 className="mt-1 text-xl font-semibold">{state.session.name}</h1>
@@ -349,7 +349,7 @@ export default function DraftRoom({
             {state.session.meetingUrl ? (
               <a
                 aria-label="Join video call"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/5 text-slate-200 transition hover:border-emerald-300/40 hover:bg-emerald-300/10 hover:text-emerald-300"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/5 text-slate-200 transition hover:border-orange-300/40 hover:bg-orange-300/10 hover:text-orange-300"
                 href={state.session.meetingUrl}
                 rel="noreferrer"
                 target="_blank"
@@ -372,7 +372,7 @@ export default function DraftRoom({
             className={`min-w-24 rounded-xl px-4 py-2 text-center ${
               remainingSeconds !== null && remainingSeconds <= 15
                 ? 'bg-rose-500 text-white'
-                : 'bg-emerald-400 text-slate-950'
+                : 'bg-orange-500 text-white'
             }`}
           >
             <span className="block text-xs font-bold uppercase tracking-wider">Clock</span>
@@ -388,13 +388,13 @@ export default function DraftRoom({
           <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2">
             <span className="mr-2 text-xs font-bold uppercase tracking-wider text-slate-500">Commissioner controls</span>
             {state.session.status === 'SCHEDULED' ? (
-              <button className="rounded-lg bg-emerald-400 px-3 py-1.5 text-sm font-bold text-slate-950 disabled:opacity-50" disabled={controlPending} onClick={() => commissionerControl('START')}>Start Draft</button>
+              <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-bold text-white disabled:opacity-50" disabled={controlPending} onClick={() => commissionerControl('START')}>Start Draft</button>
             ) : null}
             {state.session.status === 'LIVE' ? (
               <button className="rounded-lg border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-sm font-semibold text-amber-200 disabled:opacity-50" disabled={controlPending} onClick={() => commissionerControl('PAUSE')}>Pause Draft</button>
             ) : null}
             {state.session.status === 'PAUSED' ? (
-              <button className="rounded-lg bg-emerald-400 px-3 py-1.5 text-sm font-bold text-slate-950 disabled:opacity-50" disabled={controlPending} onClick={() => commissionerControl('RESUME')}>Resume Draft</button>
+              <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-bold text-white disabled:opacity-50" disabled={controlPending} onClick={() => commissionerControl('RESUME')}>Resume Draft</button>
             ) : null}
             {(state.session.status === 'PAUSED' || state.session.status === 'COMPLETED') && state.turns.some((turn) => turn.selection) ? (
               <button className="rounded-lg border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-sm font-semibold text-amber-200 disabled:opacity-50" disabled={controlPending} onClick={() => commissionerControl('UNDO')}>Undo last pick</button>
@@ -419,10 +419,10 @@ export default function DraftRoom({
       ) : null}
 
       {draftComplete ? (
-        <section className="border-b border-emerald-300/20 bg-gradient-to-br from-emerald-300/20 via-slate-900 to-blue-400/10 px-4 py-10 text-center sm:py-14">
+        <section className="border-b border-blue-500/20 bg-blue-500/10 px-4 py-10 text-center sm:py-14">
           <div className="mx-auto max-w-3xl">
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-300 text-3xl shadow-lg shadow-emerald-300/20">🏈</div>
-            <p className="mt-5 text-xs font-black uppercase tracking-[0.24em] text-emerald-300">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-orange-500 text-3xl">🏈</div>
+            <p className="mt-5 text-xs font-black uppercase tracking-[0.24em] text-orange-300">
               {state.session.mode === 'OFFICIAL' ? 'Official draft complete' : 'Demo draft complete'}
             </p>
             <h2 className="mt-3 text-4xl font-black sm:text-5xl">Every pick is in!</h2>
@@ -432,7 +432,7 @@ export default function DraftRoom({
               </p>
             ) : null}
             <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <a className="rounded-xl bg-emerald-300 px-6 py-3 font-black text-slate-950 transition hover:bg-emerald-200" href={demo ? '/demo/dashboard' : `/?season=${state.session.season.id}`}>
+              <a className="rounded-xl bg-blue-600 px-6 py-3 font-black text-white transition hover:bg-blue-500" href={demo ? '/demo/dashboard' : `/?season=${state.session.season.id}`}>
                 {state.session.mode === 'OFFICIAL' ? 'View Season Dashboard' : 'Back to Demo Dashboard'} <span aria-hidden="true">→</span>
               </a>
               {state.session.mode === 'OFFICIAL' ? (
@@ -453,7 +453,7 @@ export default function DraftRoom({
         {visibleTabs.map((tab) => (
           <button
             aria-current={displayedTab === tab ? 'page' : undefined}
-            className={`border-b-2 px-3 py-3 text-sm font-semibold transition ${displayedTab === tab ? 'border-emerald-300 text-emerald-300' : 'border-transparent text-slate-400 hover:text-white'}`}
+            className={`border-b-2 px-3 py-3 text-sm font-semibold transition ${displayedTab === tab ? 'border-orange-400 text-orange-300' : 'border-transparent text-slate-400 hover:text-white'}`}
             key={tab}
             onClick={() => {
               setActiveTab(tab)
@@ -490,7 +490,7 @@ export default function DraftRoom({
               </div>
               <div className="grid gap-2 sm:grid-cols-3">
                 <input
-                  className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 outline-none focus:border-emerald-400"
+                  className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 outline-none focus:border-blue-400"
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search teams"
                   value={search}
@@ -526,7 +526,7 @@ export default function DraftRoom({
                       unavailable
                         ? 'cursor-not-allowed border-white/5 bg-white/[0.02] opacity-55'
                         : selectedTeam?.id === team.id
-                          ? 'border-emerald-300 bg-emerald-300/10'
+                          ? 'border-blue-400 bg-blue-500/10'
                           : 'border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/10'
                     }`}
                     disabled={unavailable || !canPick}
@@ -613,7 +613,7 @@ export default function DraftRoom({
                       const team = turn?.selection?.team ?? slot?.team
                       const isCurrent = turn?.id === state.currentTurnId
                       return (
-                        <td className={`px-3 py-3 ${isCurrent ? 'bg-emerald-300/15 ring-1 ring-inset ring-emerald-300' : ''}`} key={participant.id}>
+                        <td className={`px-3 py-3 ${isCurrent ? 'bg-orange-500/15 ring-1 ring-inset ring-orange-400' : ''}`} key={participant.id}>
                           {team ? (
                             <div className="flex items-center gap-2">
                               <TeamMark abbreviation={team.abbreviation} logoUrl={team.logoUrl} size="sm" />
@@ -648,7 +648,7 @@ export default function DraftRoom({
                   <TeamMark abbreviation={turn.selection!.team.abbreviation} logoUrl={turn.selection!.team.logoUrl} size="sm" />
                   <p className="truncate">
                     <span className="font-semibold">{turn.seasonParticipant.user.name}</span>{' '}
-                    selected <span className="font-semibold text-emerald-300">{turn.selection!.team.name}</span>
+                    selected <span className="font-semibold text-blue-300">{turn.selection!.team.name}</span>
                   </p>
                 </div>
                 <span className="shrink-0 text-xs text-slate-500">Round {turn.round}</span>
@@ -663,12 +663,12 @@ export default function DraftRoom({
       </div>
 
       {selectedTeam ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-emerald-300/30 bg-slate-900 p-4 shadow-2xl">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-orange-400/40 bg-slate-900 p-4 shadow-2xl">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
               <TeamMark abbreviation={selectedTeam.abbreviation} logoUrl={selectedTeam.logoUrl} size="lg" />
               <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wider text-emerald-300">Confirm selection</p>
+              <p className="text-xs uppercase tracking-wider text-orange-300">Confirm selection</p>
               <p className="truncate text-lg font-semibold">{selectedTeam.name}</p>
               <p className="text-sm text-slate-400">Prior record: {recordLabel(selectedTeam.priorRecord)}</p>
               </div>
@@ -677,7 +677,7 @@ export default function DraftRoom({
               <button className="rounded-xl px-4 py-3 text-sm font-semibold text-slate-300" onClick={() => setSelectedTeam(null)} type="button">
                 Cancel
               </button>
-              <button className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-slate-950 disabled:opacity-60" disabled={submitting} onClick={submitSelection} type="button">
+              <button className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-white disabled:opacity-60" disabled={submitting} onClick={submitSelection} type="button">
                 {submitting ? 'Submitting…' : 'Confirm pick'}
               </button>
             </div>

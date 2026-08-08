@@ -2,7 +2,7 @@
 
 ## Direction
 
-The 10s should feel like an editorial football publication fused with a live draft board. The interface is direct, athletic, information-rich, and confident. It borrows the restraint of monochrome sports retail without copying another brand's identity.
+The 10s should feel like an editorial football publication fused with a live draft board. The interface is direct, athletic, information-rich, and confident. Its palette is inspired by classic Denver football colors without using team marks or copying a team identity.
 
 Team marks, records, standings, and people are the content. Interface chrome stays quiet so those elements carry the energy.
 
@@ -10,26 +10,29 @@ Team marks, records, standings, and people are the content. Interface chrome sta
 
 Both themes are first-class and must retain identical hierarchy, spacing, and functionality.
 
-- Light: soft-cloud `#f5f5f5` canvas, white working surfaces, ink `#111111` text, gray hairlines.
-- Dark: near-black `#090909` canvas, ink `#111111` working surfaces, soft-cloud text, charcoal hairlines.
+- Light: cool-cloud `#f4f6fb` canvas, white working surfaces, deep-navy ink `#080d24`, blue-gray hairlines.
+- Dark: midnight `#070a18` canvas, navy `#0e1530` working surfaces, cool-white text, blue-charcoal hairlines.
 - A saved explicit choice overrides the operating-system preference.
 - Never communicate state through theme-dependent color alone.
 
 ## Color roles
 
-- Primary ink: `#111111`
-- Canvas: `#f5f5f5` in light, `#090909` in dark
-- Raised surface: `#ffffff` in light, `#111111` in dark
-- Hairline: `#cacacb` in light, `#242424` in dark
-- Muted text: `#707072` in light, `#9e9ea0` in dark
-- Primary cobalt: `#1746b8` light, `#6f98ff` dark
-- Competition orange: `#c54910` light, `#ff7a35` dark
-- Success green: `#007d48` light, `#6ee7b7` dark
+- Primary ink: `#080d24` light, `#f7f8fc` dark
+- Canvas: `#f4f6fb` light, `#070a18` dark
+- Raised surface: `#ffffff` light, `#0e1530` dark
+- Hairline: `#c8cedd` light, `#2b365d` dark
+- Muted text: `#68738e` light, `#a5aec6` dark
+- Classic blue: `#001489`; use brighter `#1b32b0` or `#91a1ff` where dark-mode contrast requires it
+- Classic orange: `#fa4616`; use darker `#c42f07` for small text on light surfaces and lighter `#ff8a68` on dark surfaces
+- Powder blue support: `#e1e6ff` light, `#111b5a` dark
+- Warm cream support: `#fff3ee` light, `#2b1007` dark
+- Celebration gold: `#f6c453` dark, `#966000` light
+- Success mint: `#066544` light, `#6bd8af` dark
 - Warning: competition orange plus explicit warning text
 - Error: `#d30005` light, `#fb7185` dark
 - Info: `#1151ff` light, `#93c5fd` dark
 
-Use cobalt for primary actions, navigation, selection, and key totals. Use orange for urgency, countdowns, commissioner attention, and celebratory accents. Reserve green for explicit success states. Team logos should still provide most of the page-level color.
+Use classic blue for primary actions, navigation, selection, and key totals. Use classic orange for urgency, countdowns, commissioner attention, and high-energy moments. Gold is reserved for winners and exceptional milestones. Reserve mint for explicit success states. Team logos should still provide most of the page-level color.
 
 ## Typography
 

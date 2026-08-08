@@ -70,7 +70,7 @@ function LoginForm() {
       <div className="mx-auto flex min-h-[75vh] max-w-md items-center">
         <section className="w-full rounded-3xl border border-white/10 bg-white/5 p-7 shadow-2xl shadow-black/30 backdrop-blur">
           <div className="mb-8">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-400">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-orange-300">
               The 10&apos;s
             </p>
             <h1 className="text-3xl font-semibold tracking-tight">Sign in to your pool</h1>
@@ -86,7 +86,7 @@ function LoginForm() {
                 <input
                   autoComplete="email"
                   autoFocus
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-base outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400/10"
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="you@example.com"
                   required
@@ -95,7 +95,7 @@ function LoginForm() {
                 />
               </label>
               <button
-                className="w-full rounded-xl bg-emerald-400 px-4 py-3 font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={pending}
                 type="submit"
               >
@@ -109,7 +109,7 @@ function LoginForm() {
                 <input
                   autoComplete="one-time-code"
                   autoFocus
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-center text-2xl tracking-[0.35em] outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-center text-2xl tracking-[0.35em] outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400/10"
                   inputMode="numeric"
                   maxLength={6}
                   onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
@@ -119,7 +119,7 @@ function LoginForm() {
                 />
               </label>
               <button
-                className="w-full rounded-xl bg-emerald-400 px-4 py-3 font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={pending || code.length !== 6}
                 type="submit"
               >

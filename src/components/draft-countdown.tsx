@@ -38,19 +38,19 @@ export default function DraftCountdown({
   if (hasStarted || hasArrived) {
     return (
       <div className="mt-4">
-        <p className="text-2xl font-black text-emerald-300">
+        <p className="text-2xl font-black text-orange-300">
           {status === 'LIVE' ? 'The draft is live!' : status === 'PAUSED' ? 'The draft room is open' : 'It’s draft time!'}
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
-            className="inline-flex items-center rounded-xl bg-emerald-300 px-5 py-3 text-base font-black text-slate-950 transition hover:bg-emerald-200"
+            className="inline-flex items-center rounded-xl bg-orange-500 px-5 py-3 text-base font-black text-white transition hover:bg-orange-400"
             href={draftHref}
           >
             Enter Draft <span aria-hidden="true" className="ml-2">→</span>
           </Link>
           {meetingUrl ? (
             <a
-              className="inline-flex items-center rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-base font-bold text-white transition hover:border-emerald-300/40 hover:bg-white/10"
+              className="inline-flex items-center rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-base font-bold text-white transition hover:border-orange-300/40 hover:bg-white/10"
               href={meetingUrl}
               rel="noreferrer"
               target="_blank"
@@ -74,7 +74,7 @@ export default function DraftCountdown({
 
   return (
     <div>
-      <p className="mt-4 text-3xl font-black tabular-nums text-emerald-300">
+      <p className="mt-4 text-3xl font-black tabular-nums text-orange-300">
         {now ? remainingLabel(startsAt, now) : 'Calculating…'}
       </p>
       <p className="mt-1 text-xs text-slate-500">Countdown updates in your browser</p>

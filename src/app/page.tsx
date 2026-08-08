@@ -165,7 +165,7 @@ export default async function Home({
       <header className="border-b border-white/10 bg-slate-900/70 px-4 py-5">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-400">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-300">
               {membership.pool.name}
             </p>
             <h1 className="mt-1 text-2xl font-semibold">League dashboard</h1>
@@ -191,7 +191,7 @@ export default async function Home({
           <div>
             <p className="text-sm text-slate-400">Welcome back, {context.appUser.name}</p>
             <h2 className="mt-1 text-3xl font-semibold">{selectedSeason.name}</h2>
-            <p className="mt-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">
+            <p className="mt-2 text-xs font-bold uppercase tracking-[0.2em] text-orange-300">
               {isPreseason ? 'Preseason' : isComplete ? 'Season complete' : 'In season'}
             </p>
           </div>
@@ -245,14 +245,14 @@ export default async function Home({
         ) : null}
 
         {isPreseason ? (
-          <section className="mb-6 overflow-hidden rounded-3xl border border-emerald-300/20 bg-gradient-to-br from-emerald-300/15 via-white/5 to-blue-400/10 p-6 sm:p-8">
+          <section className="mb-6 overflow-hidden rounded-3xl border border-blue-500/30 bg-blue-500/10 p-6 sm:p-8">
             <div className="grid gap-6 lg:grid-cols-[1.2fr_.8fr] lg:items-center">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">Draft headquarters</p>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-300">Draft headquarters</p>
                 <h3 className="mt-3 text-3xl font-black">Get ready for the {selectedSeason.year} draft</h3>
                 <p className="mt-3 max-w-2xl text-slate-300">Finalize keepers, review the snake order, and build a shortlist from the best available NFL and college teams.</p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <Link className="rounded-xl bg-emerald-300 px-5 py-3 font-black text-slate-950" href={`/seasons/${selectedSeason.id}/prep`}>Open draft preparation</Link>
+                  <Link className="rounded-xl bg-blue-600 px-5 py-3 font-black text-white" href={`/seasons/${selectedSeason.id}/prep`}>Open draft preparation</Link>
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
@@ -272,7 +272,7 @@ export default async function Home({
         ) : null}
 
         {champion ? (
-          <section className="mb-7 overflow-hidden rounded-3xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-white/5 to-emerald-300/10 p-7 text-center">
+          <section className="mb-7 overflow-hidden rounded-3xl border border-amber-300/30 bg-amber-300/10 p-7 text-center">
             <p className="text-5xl">🏆</p>
             <p className="mt-3 text-xs font-bold uppercase tracking-[0.24em] text-amber-300">{selectedSeason.year} champion</p>
             <h3 className="mt-2 text-4xl font-black">{playerDisplayName(champion.user.name, champion.poolSeat.label)}</h3>
@@ -297,7 +297,7 @@ export default async function Home({
           <section className="mb-7 rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><h3 className="text-lg font-semibold">Round-one draft order</h3><p className="text-sm text-slate-400">Last place from last season picks first; round two reverses the order.</p></div><span className="text-xs font-bold uppercase tracking-wider text-slate-500">Snake draft</span></div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {keeperTracker.map((participant, index) => <div className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${participant.isViewer ? 'border-emerald-300/30 bg-emerald-300/10' : 'border-white/5 bg-slate-950/30'}`} key={participant.id}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-sm font-black">{index + 1}</span><div className="min-w-0"><p className="truncate font-semibold">{participant.name}{participant.isViewer ? ' · You' : ''}</p>{participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}</div></div>)}
+              {keeperTracker.map((participant, index) => <div className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${participant.isViewer ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-slate-950/30'}`} key={participant.id}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-sm font-black">{index + 1}</span><div className="min-w-0"><p className="truncate font-semibold">{participant.name}{participant.isViewer ? ' · You' : ''}</p>{participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}</div></div>)}
             </div>
           </section>
         ) : null}
@@ -317,7 +317,7 @@ export default async function Home({
             </div>
             <div className="divide-y divide-white/5">
               {keeperTracker.map((participant) => (
-                <article className={participant.isViewer ? 'bg-emerald-300/5' : ''} key={participant.id}>
+                <article className={participant.isViewer ? 'bg-blue-500/5' : ''} key={participant.id}>
                   <div className="flex items-center justify-between gap-4 px-5 py-4">
                     <div className="min-w-0">
                       <p className="truncate font-semibold">
@@ -368,7 +368,7 @@ export default async function Home({
               const isViewer = participant.userId === context.appUser.id
               const nickname = editableRosterNickname(participant.poolSeat.label)
               return (
-                <article className={`px-4 py-5 sm:px-5 ${isViewer ? 'bg-emerald-300/10' : ''}`} key={participant.id}>
+                <article className={`px-4 py-5 sm:px-5 ${isViewer ? 'bg-blue-500/10' : ''}`} key={participant.id}>
                   <div className="grid grid-cols-[44px_1fr_auto] items-center gap-3">
                     <span className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-black ${index === 0 ? 'bg-amber-300 text-amber-950' : 'bg-white/5 text-slate-300'}`}>{index + 1}</span>
                     <div className="min-w-0">
@@ -376,7 +376,7 @@ export default async function Home({
                       {nickname ? <p className="truncate text-sm text-slate-500">{participant.user.name}</p> : null}
                     </div>
                     <div className="text-right">
-                      <p className="text-4xl font-black leading-none tabular-nums text-emerald-300">{participant.totalWins}</p>
+                      <p className="text-4xl font-black leading-none tabular-nums text-blue-300">{participant.totalWins}</p>
                       <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Total wins</p>
                     </div>
                   </div>
@@ -393,7 +393,7 @@ export default async function Home({
                               {slot.team?.league === 'NFL' ? 'NFL' : slot.team ? 'College' : `Slot ${slot.number}`}
                             </p>
                           </div>
-                          <p className="shrink-0 font-black tabular-nums text-emerald-300">
+                          <p className="shrink-0 font-black tabular-nums text-blue-300">
                             {record ? `${record.wins}-${record.losses}${record.ties ? `-${record.ties}` : ''}` : '—'}
                           </p>
                         </div>
@@ -422,7 +422,7 @@ export default async function Home({
                       {slot.team ? <TeamMark abbreviation={slot.team.abbreviation} logoUrl={slot.team.logoUrl} /> : null}
                       <p className="font-semibold">{slot.team?.name ?? 'Open draft slot'}</p>
                     </div>
-                    <p className="mt-2 text-xl font-black tabular-nums text-emerald-300">
+                    <p className="mt-2 text-xl font-black tabular-nums text-blue-300">
                       {record ? `${record.wins}-${record.losses}${record.ties ? `-${record.ties}` : ''}` : '—'}
                     </p>
                     {isPreseason && record ? <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-500">Prior season</p> : null}

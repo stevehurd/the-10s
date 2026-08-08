@@ -132,7 +132,7 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
         <header className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
             <a className="text-sm text-slate-400 hover:text-white" href="/admin">← Admin</a>
-            <p className="mt-5 text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">{state.season.name}</p>
+            <p className="mt-5 text-sm font-semibold uppercase tracking-[0.2em] text-orange-300">{state.season.name}</p>
             <h1 className="mt-2 text-3xl font-semibold">Team eligibility review</h1>
             <p className="mt-2 max-w-2xl text-slate-400">
               SportsDataIO changes are staged here. College teams are not draftable until approved for this season.
@@ -142,7 +142,7 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
             <button className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 font-semibold hover:bg-white/10 disabled:opacity-50" disabled={busy} onClick={() => void sync()} type="button">
               Sync SportsDataIO
             </button>
-            <button className="rounded-xl bg-emerald-400 px-4 py-2.5 font-semibold text-slate-950 disabled:opacity-50" disabled={busy || counts.pending === 0} onClick={() => void approvePending()} type="button">
+            <button className="rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white disabled:opacity-50" disabled={busy || counts.pending === 0} onClick={() => void approvePending()} type="button">
               Approve {counts.pending} unchanged
             </button>
           </div>
@@ -184,7 +184,7 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
                 </span>
                 <p className="text-sm text-slate-400">{entry.reviewReason ?? 'No changes detected'}</p>
                 <div className="flex gap-2">
-                  <button className="rounded-lg bg-emerald-400 px-3 py-2 text-sm font-bold text-slate-950 disabled:opacity-40" disabled={busy || entry.status === 'APPROVED'} onClick={() => void setStatus(entry.id, 'APPROVED')} type="button">Approve</button>
+                  <button className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40" disabled={busy || entry.status === 'APPROVED'} onClick={() => void setStatus(entry.id, 'APPROVED')} type="button">Approve</button>
                   <button className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 disabled:opacity-40" disabled={busy || entry.status === 'INACTIVE'} onClick={() => void setStatus(entry.id, 'INACTIVE')} type="button">Inactive</button>
                 </div>
               </div>

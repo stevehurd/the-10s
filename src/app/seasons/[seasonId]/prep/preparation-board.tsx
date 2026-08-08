@@ -79,7 +79,7 @@ export default function PreparationBoard({ seasonId, teams }: { seasonId: string
         <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
           <input className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3" onChange={(event) => setQuery(event.target.value)} placeholder="Search teams or conferences" type="search" value={query} />
           <div className="flex gap-2">
-            {(['ALL', 'NFL', 'COLLEGE'] as const).map((value) => <button className={`rounded-lg px-3 py-2 text-sm font-bold ${league === value ? 'bg-emerald-300 text-slate-950' : 'bg-white/5 text-slate-300'}`} key={value} onClick={() => setLeague(value)} type="button">{value === 'COLLEGE' ? 'College' : value === 'ALL' ? 'All' : 'NFL'}</button>)}
+            {(['ALL', 'NFL', 'COLLEGE'] as const).map((value) => <button className={`rounded-lg px-3 py-2 text-sm font-bold ${league === value ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-300'}`} key={value} onClick={() => setLeague(value)} type="button">{value === 'COLLEGE' ? 'College' : value === 'ALL' ? 'All' : 'NFL'}</button>)}
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-300"><input checked={showUnavailable} onChange={(event) => setShowUnavailable(event.target.checked)} type="checkbox" /> Show kept teams</label>
         </div>
@@ -93,7 +93,7 @@ export default function PreparationBoard({ seasonId, teams }: { seasonId: string
               <button aria-label={`${shortlist.has(team.id) ? 'Remove' : 'Add'} ${team.name} ${shortlist.has(team.id) ? 'from' : 'to'} shortlist`} className={`text-2xl ${shortlist.has(team.id) ? 'text-amber-300' : 'text-slate-600 hover:text-amber-200'}`} onClick={() => toggleShortlist(team.id)} type="button">★</button>
               <TeamMark abbreviation={team.abbreviation} logoUrl={team.logoUrl} size="lg" />
               <div className="min-w-0 flex-1"><h2 className="truncate font-bold">{team.name}</h2><p className="text-xs text-slate-500">{team.league === 'NFL' ? 'NFL' : 'College'} · {team.conference ?? team.division ?? team.abbreviation}</p></div>
-              <div className="text-right"><p className="text-xl font-black text-emerald-300">{team.wins}-{team.losses}{team.ties ? `-${team.ties}` : ''}</p><p className="text-[10px] uppercase tracking-wider text-slate-500">Prior W-L-T</p></div>
+              <div className="text-right"><p className="text-xl font-black text-blue-300">{team.wins}-{team.losses}{team.ties ? `-${team.ties}` : ''}</p><p className="text-[10px] uppercase tracking-wider text-slate-500">Prior W-L-T</p></div>
             </div>
             {!team.available ? <p className="mt-3 rounded-lg bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-200">{team.unavailableReason}</p> : null}
           </article>

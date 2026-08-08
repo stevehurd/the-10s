@@ -2,45 +2,62 @@
 
 :root {
   color-scheme: dark;
-  --background: #090909;
-  --foreground: #f5f5f5;
-  --color-slate-950: #090909;
-  --color-slate-900: #111111;
-  --color-slate-800: #242424;
-  --color-slate-700: #39393b;
-  --color-slate-600: #4b4b4d;
-  --color-slate-500: #707072;
-  --color-slate-400: #9e9ea0;
-  --color-slate-300: #cacacb;
-  --color-slate-200: #e5e5e5;
-  --color-slate-100: #f5f5f5;
+  --background: #070a18;
+  --foreground: #f7f8fc;
+  --color-slate-950: #070a18;
+  --color-slate-900: #0e1530;
+  --color-slate-800: #182142;
+  --color-slate-700: #2b365d;
+  --color-slate-600: #4b577d;
+  --color-slate-500: #7580a1;
+  --color-slate-400: #a5aec6;
+  --color-slate-300: #cbd1e0;
+  --color-slate-200: #e2e6ef;
+  --color-slate-100: #f7f8fc;
   --color-white: #ffffff;
-  --color-black: #000000;
-  --color-emerald-200: #9bbaff;
-  --color-emerald-300: #6f98ff;
-  --color-emerald-400: #4f7cff;
-  --color-blue-50: #0d1833;
-  --color-blue-100: #12234b;
-  --color-blue-200: #9bbaff;
-  --color-blue-300: #7aa2ff;
-  --color-blue-400: #5b8cff;
-  --color-blue-500: #3974ff;
-  --color-blue-600: #2f6bff;
-  --color-blue-700: #8fb0ff;
-  --color-blue-800: #b8ccff;
-  --color-blue-900: #dbe6ff;
-  --color-amber-50: #2b1709;
-  --color-amber-100: #43230d;
-  --color-amber-200: #ffc39f;
-  --color-amber-300: #ff9b63;
-  --color-amber-400: #ff7a35;
-  --color-orange-100: #43230d;
-  --color-orange-300: #ff9b63;
-  --color-orange-400: #ff7a35;
-  --color-red-50: #300b0b;
-  --color-red-200: #ffaaa7;
-  --color-red-700: #ff8c88;
-  --color-red-800: #ffc2bf;
+  --color-black: #020411;
+  --color-blue-50: #0a123e;
+  --color-blue-100: #111b5a;
+  --color-blue-200: #b8c2ff;
+  --color-blue-300: #91a1ff;
+  --color-blue-400: #6478e8;
+  --color-blue-500: #334bc4;
+  --color-blue-600: #1b32b0;
+  --color-blue-700: #001489;
+  --color-blue-800: #000f66;
+  --color-blue-900: #000a45;
+  --color-orange-50: #2b1007;
+  --color-orange-100: #4a1809;
+  --color-orange-200: #ffb39b;
+  --color-orange-300: #ff8a68;
+  --color-orange-400: #ff6640;
+  --color-orange-500: #fa4616;
+  --color-orange-600: #d9360c;
+  --color-orange-700: #b52b08;
+  --color-orange-800: #8c2107;
+  --color-orange-900: #641906;
+  --color-orange-950: #3a0d03;
+  --color-amber-50: #251c08;
+  --color-amber-100: #3d2d0b;
+  --color-amber-200: #ffe1a3;
+  --color-amber-300: #f6c453;
+  --color-amber-400: #dfa72f;
+  --color-amber-700: #ffd77a;
+  --color-amber-900: #fff0c2;
+  --color-amber-950: #2b1a02;
+  --color-emerald-50: #09231b;
+  --color-emerald-100: #0d382b;
+  --color-emerald-200: #9be8c8;
+  --color-emerald-300: #6bd8af;
+  --color-emerald-400: #45c494;
+  --color-emerald-700: #88e0bd;
+  --color-red-50: #2c0d12;
+  --color-red-200: #ffb0ae;
+  --color-red-700: #ff8a85;
+  --color-red-800: #ffc4c1;
+  --color-rose-100: #3b1118;
+  --color-rose-300: #ff9b98;
+  --color-rose-400: #ff7d79;
 }
 
 @theme inline {
@@ -52,46 +69,62 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --background: #f5f5f5;
-  --foreground: #111111;
-  --color-slate-950: #f5f5f5;
+  --background: #f4f6fb;
+  --foreground: #080d24;
+  --color-slate-950: #f4f6fb;
   --color-slate-900: #ffffff;
-  --color-slate-800: #e5e5e5;
-  --color-slate-700: #cacacb;
-  --color-slate-600: #9e9ea0;
-  --color-slate-500: #707072;
-  --color-slate-400: #4b4b4d;
-  --color-slate-300: #39393b;
-  --color-slate-200: #242424;
-  --color-slate-100: #111111;
-  --color-white: #111111;
+  --color-slate-800: #e3e7f1;
+  --color-slate-700: #c8cedd;
+  --color-slate-600: #9ba5bc;
+  --color-slate-500: #68738e;
+  --color-slate-400: #4b5670;
+  --color-slate-300: #303b57;
+  --color-slate-200: #1c2743;
+  --color-slate-100: #080d24;
+  --color-white: #080d24;
   --color-black: #ffffff;
-  --color-emerald-200: #1746b8;
-  --color-emerald-300: #2054d4;
-  --color-emerald-400: #2f6bff;
-  --color-blue-50: #eef3ff;
-  --color-blue-100: #dbe6ff;
-  --color-blue-200: #b8ccff;
-  --color-blue-300: #7aa2ff;
-  --color-blue-400: #3974ff;
-  --color-blue-500: #2054d4;
-  --color-blue-600: #1746b8;
-  --color-blue-700: #123996;
-  --color-blue-800: #0f307d;
-  --color-blue-900: #0d2868;
-  --color-amber-50: #fff2e8;
-  --color-amber-100: #ffe0cc;
-  --color-amber-200: #d85616;
-  --color-amber-300: #c54910;
-  --color-amber-400: #b63f0c;
-  --color-orange-100: #ffe0cc;
-  --color-orange-300: #d85616;
-  --color-orange-400: #c54910;
-  --color-blue-200: #003ec7;
-  --color-blue-300: #1151ff;
-  --color-rose-100: #780700;
-  --color-rose-300: #d30005;
-  --color-rose-400: #d30005;
+  --color-blue-50: #f0f3ff;
+  --color-blue-100: #e1e6ff;
+  --color-blue-200: #b9c3f4;
+  --color-blue-300: #001489;
+  --color-blue-400: #10299f;
+  --color-blue-500: #0a218f;
+  --color-blue-600: #001489;
+  --color-blue-700: #001170;
+  --color-blue-800: #000d59;
+  --color-blue-900: #000a45;
+  --color-orange-50: #fff3ee;
+  --color-orange-100: #ffe2d8;
+  --color-orange-200: #e93b0c;
+  --color-orange-300: #d9360c;
+  --color-orange-400: #c42f07;
+  --color-orange-500: #fa4616;
+  --color-orange-600: #c42f07;
+  --color-orange-700: #a32605;
+  --color-orange-800: #811e05;
+  --color-orange-900: #611704;
+  --color-orange-950: #3a0d03;
+  --color-amber-50: #fff8e6;
+  --color-amber-100: #ffedba;
+  --color-amber-200: #b77500;
+  --color-amber-300: #966000;
+  --color-amber-400: #7d4f00;
+  --color-amber-700: #6b4300;
+  --color-amber-900: #432a00;
+  --color-amber-950: #2b1a02;
+  --color-emerald-50: #e9f8f2;
+  --color-emerald-100: #cef1e3;
+  --color-emerald-200: #08734f;
+  --color-emerald-300: #066544;
+  --color-emerald-400: #055a3c;
+  --color-emerald-700: #034d33;
+  --color-red-50: #fff0ef;
+  --color-red-200: #c62828;
+  --color-red-700: #a91e1e;
+  --color-red-800: #831717;
+  --color-rose-100: #ffe2e0;
+  --color-rose-300: #c62828;
+  --color-rose-400: #ae1f1f;
 }
 
 body {
@@ -109,13 +142,13 @@ body {
 }
 
 ::selection {
-  background: #111111;
+  background: #fa4616;
   color: #ffffff;
 }
 
 :root[data-theme="dark"] ::selection {
-  background: #ffffff;
-  color: #111111;
+  background: #fa4616;
+  color: #070a18;
 }
 
 button,
@@ -129,7 +162,7 @@ button:focus-visible,
 a:focus-visible,
 select:focus-visible,
 input:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--foreground) 35%, transparent);
+  outline: 3px solid color-mix(in srgb, #fa4616 70%, transparent);
   outline-offset: 2px;
 }
 

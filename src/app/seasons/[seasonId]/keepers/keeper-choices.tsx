@@ -142,7 +142,7 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
       <div className="mx-auto max-w-6xl">
         <header className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-300">
               {state.season.name}
             </p>
             <h1 className="mt-2 text-3xl font-semibold">Keep or Release</h1>
@@ -211,7 +211,7 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
                 {team ? (
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <button
-                      className={`rounded-xl border px-4 py-2.5 font-semibold transition ${slot.retentionChoice === 'KEEP' ? 'border-emerald-300 bg-emerald-300 text-slate-950' : 'border-white/10 bg-slate-900 text-slate-300 hover:border-emerald-300/50'}`}
+                      className={`rounded-xl border px-4 py-2.5 font-semibold transition ${slot.retentionChoice === 'KEEP' ? 'border-blue-600 bg-blue-600 text-white' : 'border-white/10 bg-slate-900 text-slate-300 hover:border-blue-400/50'}`}
                       disabled={busy || Boolean(participant.decisionsLockedAt)}
                       onClick={() => void choose(slot.id, 'KEEP')}
                       type="button"
@@ -235,7 +235,7 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
 
         <div className="sticky bottom-0 mt-8 border-t border-white/10 bg-slate-950/95 py-4 backdrop-blur">
           <button
-            className="w-full rounded-xl bg-emerald-400 px-5 py-3.5 font-bold text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl bg-blue-600 px-5 py-3.5 font-bold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!ready || submitting || Boolean(participant.decisionsLockedAt)}
             onClick={() => void submit()}
             type="button"
