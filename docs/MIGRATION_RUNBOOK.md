@@ -112,6 +112,22 @@ npm run migrate:2025-data -- \
   --commissioner-email person@example.com
 ```
 
+If the intended commissioner has no legacy email, use the immutable user ID
+confirmed from the isolated restored copy instead:
+
+```sh
+npm run migrate:2025-data -- \
+  --apply \
+  --backup-confirmed \
+  --source-fingerprint COPY_THE_PREFLIGHT_FINGERPRINT \
+  --commissioner-user-id COPY_THE_CONFIRMED_LEGACY_USER_ID
+```
+
+Provide exactly one commissioner selector. The user-ID fallback assigns the
+membership role without modifying the legacy `users` row or its source
+fingerprint. Add verified sign-in emails afterward as a separate audited
+onboarding operation.
+
 The script is idempotent for the pool, memberships, participant records, team-season totals, eligibility, and roster slots. It never deletes or rewrites legacy `users`, `drafts`, or team W-L-T values. It marks the new 2025 season projection and team-season records finalized so later sync jobs refuse to change them. Before committing its transaction, it re-reads the legacy source rows, verifies their fingerprint is unchanged, and reconciles every participant, roster slot, team assignment, and win total. Any mismatch rolls back the entire data migration.
 
 ## Verification

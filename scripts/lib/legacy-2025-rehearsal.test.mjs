@@ -62,6 +62,17 @@ test('a missing email is visible but does not discard historical roster data', (
   assert.ok(report.warnings.some((warning) => warning.includes('cannot sign in')))
 })
 
+test('reconciliation can identify the commissioner by immutable user ID when emails are absent', () => {
+  const legacy = buildLegacy2025Fixture()
+  legacy.users[0].email = null
+  const migrated = buildMigratedSnapshot(legacy)
+  migrated.memberships[0].role = 'COMMISSIONER'
+  assert.deepEqual(
+    reconcileMigrationSnapshot(legacy, migrated, { commissionerUserId: legacy.users[0].id }),
+    [],
+  )
+})
+
 test('legacy final ranks use best single NFL team, then best single college team', () => {
   const user = (name, nflWins, collegeWins) => ({
     id: name,

@@ -157,10 +157,12 @@ export function reconcileMigrationSnapshot(legacy, migrated, options = {}) {
     if (participant.finalRank !== expectedRankByUserId.get(user.id)) errors.push(`${user.name} final rank differs`)
   }
 
-  if (options.commissionerEmail) {
-    const expectedCommissioner = legacy.users.find(
-      (user) => user.email?.trim().toLowerCase() === options.commissionerEmail.trim().toLowerCase(),
-    )
+  if (options.commissionerEmail || options.commissionerUserId) {
+    const expectedCommissioner = options.commissionerUserId
+      ? legacy.users.find((user) => user.id === options.commissionerUserId)
+      : legacy.users.find(
+        (user) => user.email?.trim().toLowerCase() === options.commissionerEmail.trim().toLowerCase(),
+      )
     const activeMemberships = (migrated.memberships ?? []).filter((membership) => membership.status === 'ACTIVE')
     const commissioners = activeMemberships.filter((membership) => membership.role === 'COMMISSIONER')
     if (activeMemberships.length !== legacy.users.length) {

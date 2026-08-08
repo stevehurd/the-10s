@@ -15,6 +15,10 @@ const backupConfirmed = args.has('--backup-confirmed')
 const commissionerFlagIndex = process.argv.indexOf('--commissioner-email')
 const commissionerEmail =
   commissionerFlagIndex >= 0 ? process.argv[commissionerFlagIndex + 1]?.trim().toLowerCase() : null
+const commissionerUserIdFlagIndex = process.argv.indexOf('--commissioner-user-id')
+const requestedCommissionerUserId = commissionerUserIdFlagIndex >= 0
+  ? process.argv[commissionerUserIdFlagIndex + 1]?.trim()
+  : null
 const fingerprintFlagIndex = process.argv.indexOf('--source-fingerprint')
 const expectedFingerprint =
   fingerprintFlagIndex >= 0 ? process.argv[fingerprintFlagIndex + 1]?.trim() : null
@@ -48,17 +52,23 @@ async function loadLegacyData(client = prisma) {
 }
 
 async function migrate({ season, users, teams }, sourceFingerprint) {
-  assert(commissionerEmail, '--commissioner-email is required with --apply')
+  assert(
+    Boolean(commissionerEmail) !== Boolean(requestedCommissionerUserId),
+    'Provide exactly one of --commissioner-email or --commissioner-user-id with --apply',
+  )
   assert(backupConfirmed, '--backup-confirmed is required with --apply')
   assert(expectedFingerprint, '--source-fingerprint is required with --apply')
   assert(
     expectedFingerprint === sourceFingerprint,
     'Source fingerprint does not match this preflight. Stop and create a new backup.',
   )
-  assert(
-    users.some((user) => user.email?.trim().toLowerCase() === commissionerEmail),
-    'Commissioner email does not match a 2025 user',
-  )
+  const commissioner = requestedCommissionerUserId
+    ? users.find((user) => user.id === requestedCommissionerUserId)
+    : users.find((user) => user.email?.trim().toLowerCase() === commissionerEmail)
+  assert(commissioner, requestedCommissionerUserId
+    ? 'Commissioner user ID does not match a 2025 user'
+    : 'Commissioner email does not match a 2025 user')
+  const commissionerUserId = commissioner.id
 
   const standings = rankLegacyStandings(users)
 
@@ -128,13 +138,13 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
         where: { poolId_userId: { poolId: pool.id, userId: user.id } },
         update: {
           status: 'ACTIVE',
-          role: user.email?.trim().toLowerCase() === commissionerEmail ? 'COMMISSIONER' : 'MEMBER',
+          role: user.id === commissionerUserId ? 'COMMISSIONER' : 'MEMBER',
         },
         create: {
           poolId: pool.id,
           userId: user.id,
           status: 'ACTIVE',
-          role: user.email?.trim().toLowerCase() === commissionerEmail ? 'COMMISSIONER' : 'MEMBER',
+          role: user.id === commissionerUserId ? 'COMMISSIONER' : 'MEMBER',
         },
       })
 
@@ -211,7 +221,7 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
         season: migratedSeason,
         memberships: migratedMemberships,
       },
-      { commissionerEmail },
+      { commissionerUserId },
     )
     assert(reconciliationErrors.length === 0, `Reconciliation failed: ${reconciliationErrors.join('; ')}`)
     const legacyAfterMigration = await loadLegacyData(tx)
