@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 
 import { PrismaClient } from '@prisma/client'
-import { createHash } from 'node:crypto'
+import {
+  createPreflightReport,
+  legacyFingerprint,
+  rankLegacyStandings,
+  reconcileMigrationSnapshot,
+} from './lib/legacy-2025-rehearsal.mjs'
 
 const prisma = new PrismaClient()
 const args = new Set(process.argv.slice(2))
@@ -42,88 +47,6 @@ async function loadLegacyData(client = prisma) {
   return { season, users, teams }
 }
 
-function legacyFingerprint({ season, users, teams }) {
-  const snapshot = {
-    season: { id: season.id, year: season.year },
-    users: users
-      .map((user) => ({ id: user.id, name: user.name, email: user.email }))
-      .sort((left, right) => left.id.localeCompare(right.id)),
-    drafts: users
-      .flatMap((user) =>
-        user.drafts.map((draft) => ({
-          id: draft.id,
-          userId: draft.userId,
-          teamId: draft.teamId,
-          round: draft.round,
-          pickNumber: draft.pickNumber,
-          isKeeper: draft.isKeeper,
-        })),
-      )
-      .sort((left, right) => left.id.localeCompare(right.id)),
-    teams: teams
-      .map((team) => ({
-        id: team.id,
-        name: team.name,
-        league: team.league,
-        wins: team.wins,
-        losses: team.losses,
-        ties: team.ties,
-      }))
-      .sort((left, right) => left.id.localeCompare(right.id)),
-  }
-  return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex')
-}
-
-function validateLegacyData({ users }) {
-  const errors = []
-
-  for (const user of users) {
-    const rounds = new Set(user.drafts.map((draft) => draft.round))
-    if (rounds.size !== user.drafts.length) errors.push(`${user.name} has duplicate round assignments`)
-    if (user.drafts.length !== 10) errors.push(`${user.name} has ${user.drafts.length} teams instead of 10`)
-
-    const nfl = user.drafts.filter((draft) => draft.team.league === 'NFL').length
-    const college = user.drafts.filter((draft) => draft.team.league === 'COLLEGE').length
-    if (nfl !== 2 || college !== 8) {
-      errors.push(`${user.name} has ${nfl} NFL and ${college} college teams instead of 2 and 8`)
-    }
-
-    for (const draft of user.drafts) {
-      if (draft.round < 1 || draft.round > 10) {
-        errors.push(`${user.name} has an invalid round ${draft.round}`)
-      }
-    }
-  }
-
-  const assignments = users.flatMap((user) =>
-    user.drafts.map((draft) => ({ teamId: draft.teamId, owner: user.name })),
-  )
-  const ownerByTeam = new Map()
-  for (const assignment of assignments) {
-    const existingOwner = ownerByTeam.get(assignment.teamId)
-    if (existingOwner) {
-      errors.push(`A team is assigned to both ${existingOwner} and ${assignment.owner}`)
-    }
-    ownerByTeam.set(assignment.teamId, assignment.owner)
-  }
-
-  return errors
-}
-
-function calculateStanding(user) {
-  let totalWins = 0
-  let nflWins = 0
-  let collegeWins = 0
-
-  for (const draft of user.drafts) {
-    totalWins += draft.team.wins
-    if (draft.team.league === 'NFL') nflWins += draft.team.wins
-    if (draft.team.league === 'COLLEGE') collegeWins += draft.team.wins
-  }
-
-  return { user, totalWins, nflWins, collegeWins }
-}
-
 async function migrate({ season, users, teams }, sourceFingerprint) {
   assert(commissionerEmail, '--commissioner-email is required with --apply')
   assert(backupConfirmed, '--backup-confirmed is required with --apply')
@@ -137,14 +60,7 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
     'Commissioner email does not match a 2025 user',
   )
 
-  const standings = users.map(calculateStanding).sort((left, right) => {
-    return (
-      right.totalWins - left.totalWins ||
-      right.nflWins - left.nflWins ||
-      right.collegeWins - left.collegeWins ||
-      left.user.name.localeCompare(right.user.name)
-    )
-  })
+  const standings = rankLegacyStandings(users)
 
   const migratedAt = new Date()
   await prisma.$transaction(async (tx) => {
@@ -284,53 +200,20 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
       where: { seasonId: season.id },
       include: { rosterSlots: { include: { team: true } } },
     })
-    assert(
-      migratedParticipants.length === users.length,
-      `Reconciliation failed: expected ${users.length} participants, found ${migratedParticipants.length}`,
-    )
-    const participantByUserId = new Map(
-      migratedParticipants.map((participant) => [participant.userId, participant]),
-    )
-    for (const user of users) {
-      const participant = participantByUserId.get(user.id)
-      assert(participant, `Reconciliation failed: ${user.name} has no season participant`)
-      assert(
-        participant.rosterSlots.length === user.drafts.length,
-        `Reconciliation failed: ${user.name} roster slot count differs from legacy drafts`,
-      )
-      const legacyTeamByRound = new Map(user.drafts.map((draft) => [draft.round, draft.teamId]))
-      for (const slot of participant.rosterSlots) {
-        assert(
-          slot.teamId === legacyTeamByRound.get(slot.number),
-          `Reconciliation failed: ${user.name} slot ${slot.number} team differs`,
-        )
-      }
-      const standing = calculateStanding(user)
-      assert(participant.totalWins === standing.totalWins, `Reconciliation failed: ${user.name} total wins differ`)
-      assert(participant.nflWins === standing.nflWins, `Reconciliation failed: ${user.name} NFL wins differ`)
-      assert(participant.collegeWins === standing.collegeWins, `Reconciliation failed: ${user.name} college wins differ`)
-    }
     const migratedRecords = await tx.teamSeasonRecord.findMany({ where: { seasonId: season.id } })
-    const recordCount = migratedRecords.length
-    assert(
-      recordCount === teams.length,
-      `Reconciliation failed: expected ${teams.length} team records, found ${recordCount}`,
-    )
-    const recordByTeamId = new Map(migratedRecords.map((record) => [record.teamId, record]))
-    for (const team of teams) {
-      const record = recordByTeamId.get(team.id)
-      assert(record, `Reconciliation failed: ${team.name} has no 2025 team record`)
-      assert(
-        record.wins === team.wins && record.losses === team.losses && record.ties === team.ties,
-        `Reconciliation failed: ${team.name} W-L-T differs from the legacy source`,
-      )
-      assert(record.finalizedAt, `Reconciliation failed: ${team.name} record is not finalized`)
-    }
     const migratedSeason = await tx.season.findUnique({ where: { id: season.id } })
-    assert(
-      migratedSeason?.status === 'FINALIZED' && migratedSeason.finalizedAt,
-      'Reconciliation failed: the 2025 season is not finalized',
+    const migratedMemberships = await tx.poolMembership.findMany({ where: { poolId: pool.id } })
+    const reconciliationErrors = reconcileMigrationSnapshot(
+      { season, users, teams },
+      {
+        participants: migratedParticipants,
+        teamRecords: migratedRecords,
+        season: migratedSeason,
+        memberships: migratedMemberships,
+      },
+      { commissionerEmail },
     )
+    assert(reconciliationErrors.length === 0, `Reconciliation failed: ${reconciliationErrors.join('; ')}`)
     const legacyAfterMigration = await loadLegacyData(tx)
     assert(
       legacyFingerprint(legacyAfterMigration) === sourceFingerprint,
@@ -358,18 +241,23 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
 
 async function main() {
   const data = await loadLegacyData()
-  const errors = validateLegacyData(data)
-  const sourceFingerprint = legacyFingerprint(data)
+  const report = createPreflightReport(data)
+  const sourceFingerprint = report.sourceFingerprint
 
-  console.log(`2025 season: ${data.season.name}`)
-  console.log(`Users: ${data.users.length}`)
-  console.log(`Teams: ${data.teams.length}`)
-  console.log(`Roster assignments: ${data.users.reduce((total, user) => total + user.drafts.length, 0)}`)
+  console.log(`2025 season: ${report.season.name}`)
+  console.log(`Users: ${report.counts.users}`)
+  console.log(`Teams: ${report.counts.teams}`)
+  console.log(`Roster assignments: ${report.counts.rosterAssignments}`)
   console.log(`Source fingerprint: ${sourceFingerprint}`)
 
-  if (errors.length > 0) {
+  if (report.warnings.length > 0) {
+    console.warn('\nPreflight warnings:')
+    for (const warning of report.warnings) console.warn(`- ${warning}`)
+  }
+
+  if (!report.passed) {
     console.error('\nPreflight failed:')
-    for (const error of errors) console.error(`- ${error}`)
+    for (const error of report.errors) console.error(`- ${error}`)
     process.exitCode = 1
     return
   }

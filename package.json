@@ -17,6 +17,7 @@
     "db:seed:sportsdata": "node scripts/seed-development.mjs --reset-development-pool --sportsdata",
     "db:verify:demo": "node scripts/verify-development-seed.mjs",
     "migrate:2025-data": "node scripts/migrate-2025-data.mjs",
+    "migrate:2025-rehearsal": "node scripts/rehearse-2025-fixture.mjs && node --test scripts/lib/legacy-2025-rehearsal.test.mjs",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",

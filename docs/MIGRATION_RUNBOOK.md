@@ -2,6 +2,26 @@
 
 Do not run this procedure until a separate Supabase development project has passed the rehearsal and the repository owner explicitly approves production access.
 
+## Credential-free synthetic rehearsal
+
+Run this before using any backup, database URL, or 1Password item:
+
+```sh
+npm run migrate:2025-rehearsal
+```
+
+This command uses a fully synthetic legacy season and does not initialize Prisma or access a database. It prints a machine-readable report followed by deterministic tests. The rehearsal must report:
+
+- `passed: true`
+- `productionAccessed: false`
+- `dataChanged: false`
+- stable source fingerprints regardless of query ordering
+- failures for duplicate ownership, invalid rounds or roster quotas, invalid W-L-T values, and reconciliation drift
+- final ranks using total wins, best single NFL team, then best single college team
+- exactly one intended active commissioner membership
+
+The synthetic rehearsal proves the transformation rules and failure handling. It does not replace the restored-copy rehearsal below.
+
 ## Preconditions
 
 - Record the current production deployment and database provider.
@@ -10,6 +30,17 @@ Do not run this procedure until a separate Supabase development project has pass
 - Verify the restored counts for users, teams, seasons, drafts, and games.
 - Configure the destination through runtime-injected credentials; do not save production credentials in the repository.
 - Confirm the intended commissioner email outside logs and source control.
+
+Record every restored-copy rehearsal with:
+
+- source deployment identifier and database provider
+- backup creation time, byte size, and SHA-256 checksum
+- isolated restore target identifier
+- migration commit SHA
+- preflight source fingerprint
+- commissioner identity confirmation performed outside the report
+- apply start/end timestamps and final reconciliation result
+- rollback owner and tested restore command
 
 ## Migration history baseline
 
