@@ -85,7 +85,7 @@ export default function DemoDashboardPage() {
 
         <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5">
           <div><p className="text-xs font-bold uppercase tracking-wider text-blue-700">Commissioner preview</p><h2 className="mt-1 text-lg font-black">See how a season gets prepared</h2></div>
-          <div className="flex gap-2"><Link className="rounded-xl border border-blue-200 bg-white px-4 py-2 font-bold text-blue-900" href="/demo/setup">Season setup</Link><Link className="rounded-xl bg-blue-700 px-4 py-2 font-bold text-white" href="/demo">Enter draft room</Link></div>
+          <div className="flex gap-2"><Link className="rounded-xl border border-blue-200 bg-white px-4 py-2 font-bold text-blue-900" href="/demo/setup">Season setup</Link><Link className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white" href="/demo">Enter draft room</Link></div>
         </section>
       </div>
     </main>

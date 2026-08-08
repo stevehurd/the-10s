@@ -265,7 +265,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
               ) : (
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
                   <p className="text-sm text-slate-600">Create the official draft after the league is ready.</p>
-                  <button className="rounded-lg bg-blue-700 px-5 py-2.5 font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={!ready || busy !== null} onClick={() => createSession('OFFICIAL')}>
+                  <button className="rounded-lg bg-blue-600 px-5 py-2.5 font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={!ready || busy !== null} onClick={() => createSession('OFFICIAL')}>
                     {busy === 'create-OFFICIAL' ? 'Creating…' : 'Create official draft'}
                   </button>
                 </div>
@@ -370,7 +370,7 @@ function ScheduleEditor({ session }: { session: SessionSummary }) {
       <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Start time<input className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label>
       <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Video call URL<input autoCapitalize="none" className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" inputMode="url" placeholder="https://..." spellCheck={false} type="url" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} onBlur={(event) => setMeetingUrl(normalizeMeetingUrl(event.target.value) ?? '')} /><span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-slate-500">https:// is added automatically.</span></label>
       <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Pick seconds<input className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" max={900} min={10} type="number" value={pickSeconds} onChange={(event) => setPickSeconds(Number(event.target.value))} /></label>
-      <button className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save logistics'}</button>
+      <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save logistics'}</button>
       <button
         className="justify-self-start text-xs font-semibold text-slate-600 underline underline-offset-2 disabled:opacity-50 md:col-span-4"
         disabled={saving || (!startsAt && !meetingUrl)}

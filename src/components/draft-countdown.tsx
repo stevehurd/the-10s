@@ -43,7 +43,7 @@ export default function DraftCountdown({
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
-            className="inline-flex items-center rounded-xl bg-orange-500 px-5 py-3 text-base font-black text-white transition hover:bg-orange-400"
+            className="inline-flex items-center rounded-xl bg-blue-600 px-5 py-3 text-base font-black text-white transition hover:bg-blue-500"
             href={draftHref}
           >
             Enter Draft <span aria-hidden="true" className="ml-2">→</span>
