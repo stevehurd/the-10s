@@ -7,6 +7,7 @@ import {
   planLastPickUndo,
   seasonStatusForDraftSession,
   selectAutopick,
+  shouldRunServerAutopick,
   type DraftSeat,
   type DraftTeam,
   type League,
@@ -813,6 +814,70 @@ async function autopickCurrentTurn(draftSessionId: string, requireExpiredClock: 
 
 export async function autopickExpiredTurn(draftSessionId: string) {
   return autopickCurrentTurn(draftSessionId, true)
+}
+
+export async function autopickExpiredOfficialDrafts(now = new Date()) {
+  const candidates = await prisma.draftSession.findMany({
+    where: {
+      mode: 'OFFICIAL',
+      status: 'LIVE',
+      turns: {
+        some: {
+          status: 'ACTIVE',
+          deadlineAt: { lte: now },
+        },
+      },
+    },
+    select: {
+      id: true,
+      mode: true,
+      status: true,
+      turns: {
+        where: { status: 'ACTIVE' },
+        orderBy: { overallIndex: 'asc' },
+        take: 1,
+        select: { status: true, deadlineAt: true },
+      },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: 25,
+  })
+
+  const completed: string[] = []
+  const skipped: Array<{ sessionId: string; reason: string }> = []
+
+  for (const session of candidates) {
+    const turn = session.turns[0]
+    if (!turn || !shouldRunServerAutopick({
+      sessionMode: session.mode,
+      sessionStatus: session.status,
+      turnStatus: turn.status,
+      deadlineAt: turn.deadlineAt,
+      now,
+    })) {
+      continue
+    }
+
+    try {
+      await autopickExpiredTurn(session.id)
+      completed.push(session.id)
+    } catch (error) {
+      // A member's browser may have advanced the draft after this worker read
+      // the candidate. Treat that expected race as a harmless skip.
+      if (error instanceof DraftRuleError && [
+        'CLOCK_NOT_EXPIRED',
+        'DRAFT_NOT_LIVE',
+        'NO_ACTIVE_TURN',
+        'STALE_DRAFT',
+      ].includes(error.code)) {
+        skipped.push({ sessionId: session.id, reason: error.code })
+        continue
+      }
+      throw error
+    }
+  }
+
+  return { inspected: candidates.length, completed, skipped }
 }
 
 export async function fastForwardRehearsalToFinalPick(

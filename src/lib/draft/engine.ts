@@ -37,6 +37,22 @@ export function seasonStatusForDraftSession(
   return null
 }
 
+export function shouldRunServerAutopick(input: {
+  sessionMode: string
+  sessionStatus: string
+  turnStatus: string
+  deadlineAt: Date | null
+  now: Date
+}) {
+  return Boolean(
+    input.sessionMode === 'OFFICIAL' &&
+      input.sessionStatus === 'LIVE' &&
+      input.turnStatus === 'ACTIVE' &&
+      input.deadlineAt &&
+      input.deadlineAt.getTime() <= input.now.getTime(),
+  )
+}
+
 export interface RosterSlot {
   number: number
   state: SlotState

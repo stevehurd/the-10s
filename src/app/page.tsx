@@ -5,6 +5,7 @@ import KeeperStatusCallout from '@/components/keeper-status-callout'
 import TeamMark from '@/components/team-mark'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
+import { compareStandings } from '@/lib/standings-ranking'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,22 +83,32 @@ export default async function Home({
       let totalWins = 0
       let nflWins = 0
       let collegeWins = 0
+      let bestNflTeamWins = 0
+      let bestCollegeTeamWins = 0
       for (const slot of participant.rosterSlots) {
         if (!slot.teamId || !slot.team) continue
         const wins = recordByTeam.get(slot.teamId)?.wins ?? 0
         totalWins += wins
-        if (slot.team.league === 'NFL') nflWins += wins
-        if (slot.team.league === 'COLLEGE') collegeWins += wins
+        if (slot.team.league === 'NFL') {
+          nflWins += wins
+          bestNflTeamWins = Math.max(bestNflTeamWins, wins)
+        }
+        if (slot.team.league === 'COLLEGE') {
+          collegeWins += wins
+          bestCollegeTeamWins = Math.max(bestCollegeTeamWins, wins)
+        }
       }
-      return { ...participant, totalWins, nflWins, collegeWins }
+      return {
+        ...participant,
+        totalWins,
+        nflWins,
+        collegeWins,
+        bestNflTeamWins,
+        bestCollegeTeamWins,
+        rankingName: participant.user.name,
+      }
     })
-    .sort(
-      (left, right) =>
-        right.totalWins - left.totalWins ||
-        right.nflWins - left.nflWins ||
-        right.collegeWins - left.collegeWins ||
-        left.user.name.localeCompare(right.user.name),
-    )
+    .sort(compareStandings)
   const viewerParticipant = standings.find(
     (participant) => participant.userId === context.appUser.id,
   )

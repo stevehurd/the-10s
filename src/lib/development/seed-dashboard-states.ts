@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 
 import { prisma } from '@/lib/db'
+import { compareStandings } from '@/lib/standings-ranking'
 
 const STRESS_SEASONS = [2022, 2023, 2024] as const
 
@@ -128,7 +129,13 @@ export async function seedDashboardStressTestSeasons(input: {
 
     for (const season of seasons) {
       const records = recordsBySeason.get(season.id)!
-      const participantTotals: Array<{ participantId: string; totalWins: number; nflWins: number; collegeWins: number }> = []
+      const participantTotals: Array<{
+        participantId: string
+        totalWins: number
+        bestNflTeamWins: number
+        bestCollegeTeamWins: number
+        rankingName: string
+      }> = []
 
       for (const [index, template] of participants.entries()) {
         const roster = [
@@ -152,7 +159,13 @@ export async function seedDashboardStressTestSeasons(input: {
             decisionsLockedAt: season.id === preseason.id ? null : new Date(`${season.year}-08-25T12:00:00.000Z`),
           },
         })
-        participantTotals.push({ participantId: seasonParticipant.id, totalWins: nflWins + collegeWins, nflWins, collegeWins })
+        participantTotals.push({
+          participantId: seasonParticipant.id,
+          totalWins: nflWins + collegeWins,
+          bestNflTeamWins: Math.max(...roster.slice(0, 2).map((team) => records.get(team.id)!.wins)),
+          bestCollegeTeamWins: Math.max(...roster.slice(2).map((team) => records.get(team.id)!.wins)),
+          rankingName: seasonParticipant.id,
+        })
 
         await tx.rosterSlot.createMany({
           data: roster.map((team, slotIndex) => {
@@ -178,12 +191,7 @@ export async function seedDashboardStressTestSeasons(input: {
       }
 
       if (season.id === completed.id) {
-        const ranked = [...participantTotals].sort((left, right) =>
-          right.totalWins - left.totalWins ||
-          right.nflWins - left.nflWins ||
-          right.collegeWins - left.collegeWins ||
-          left.participantId.localeCompare(right.participantId),
-        )
+        const ranked = [...participantTotals].sort(compareStandings)
         for (const [rankIndex, result] of ranked.entries()) {
           await tx.seasonParticipant.update({
             where: { id: result.participantId },

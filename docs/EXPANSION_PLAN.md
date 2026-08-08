@@ -12,6 +12,7 @@
 - Picks can be NFL or college in any round, but every completed roster must contain exactly 2 NFL and 8 college teams.
 - The default pick clock is 90 seconds and is configurable before the draft.
 - A timeout selects the eligible available team with the best prior-season record: wins descending, losses ascending, ties descending, then team name.
+- The browser requests an autopick immediately when its visible clock expires. A server-owned cron worker checks once per minute and advances any expired official turn even when no draft room is open.
 - Commissioners may pause, resume, pick for a participant, undo, and correct a draft. Every such action is audited.
 - Sign-in is invitation-only using Supabase email OTP. League data requires authentication. Member contact information is private.
 
@@ -41,9 +42,9 @@
 - Every completed roster has exactly 2 NFL and 8 college teams.
 - Rehearsal activity can never mutate an official draft or roster.
 
-## Open detail
+## Standings tiebreaker
 
-The precise final fallback when overall, NFL, and college win totals remain tied must be chosen before final standings are locked. Commissioner ordering is the current safe fallback.
+Standings rank by total wins, then the best single NFL team's win total, then the best single college team's win total. An exact tie after those competitive criteria uses player name only for deterministic display until a commissioner records the final order.
 
 ## Outstanding data work
 

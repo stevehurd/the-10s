@@ -10,12 +10,26 @@ import {
   seedDraftOrder,
   selectAutopick,
   seasonStatusForDraftSession,
+  shouldRunServerAutopick,
   validateReleaseMinimums,
   type DraftSeat,
   type DraftTeam,
   type League,
   type RosterSlot,
 } from './engine.ts'
+
+test('server autopick only claims expired active turns in an official live draft', () => {
+  const now = new Date('2026-08-08T12:00:00.000Z')
+  const expired = new Date('2026-08-08T11:59:59.000Z')
+  const future = new Date('2026-08-08T12:00:01.000Z')
+
+  assert.equal(shouldRunServerAutopick({ sessionMode: 'OFFICIAL', sessionStatus: 'LIVE', turnStatus: 'ACTIVE', deadlineAt: expired, now }), true)
+  assert.equal(shouldRunServerAutopick({ sessionMode: 'REHEARSAL', sessionStatus: 'LIVE', turnStatus: 'ACTIVE', deadlineAt: expired, now }), false)
+  assert.equal(shouldRunServerAutopick({ sessionMode: 'OFFICIAL', sessionStatus: 'PAUSED', turnStatus: 'ACTIVE', deadlineAt: expired, now }), false)
+  assert.equal(shouldRunServerAutopick({ sessionMode: 'OFFICIAL', sessionStatus: 'LIVE', turnStatus: 'PENDING', deadlineAt: expired, now }), false)
+  assert.equal(shouldRunServerAutopick({ sessionMode: 'OFFICIAL', sessionStatus: 'LIVE', turnStatus: 'ACTIVE', deadlineAt: future, now }), false)
+  assert.equal(shouldRunServerAutopick({ sessionMode: 'OFFICIAL', sessionStatus: 'LIVE', turnStatus: 'ACTIVE', deadlineAt: null, now }), false)
+})
 
 function team(id: string, league: League, wins = 0, losses = 0, ties = 0): DraftTeam {
   return { id, name: id, league, priorRecord: { wins, losses, ties } }
