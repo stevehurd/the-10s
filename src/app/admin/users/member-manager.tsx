@@ -29,6 +29,8 @@ export default function MemberManager() {
   const [message, setMessage] = useState<string | null>(null)
   const [editingInvitationId, setEditingInvitationId] = useState<string | null>(null)
   const [invitationEmail, setInvitationEmail] = useState('')
+  const activeMembers = members.filter((member) => member.status === 'ACTIVE')
+  const pendingInvitationCount = activeMembers.filter((member) => member.invitationState !== 'CLAIMED').length
 
   async function load() {
     const response = await fetch('/api/users')
@@ -118,19 +120,21 @@ export default function MemberManager() {
           title="People"
         />
 
-        <section className="rounded-2xl border border-blue-400/30 bg-blue-50 p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">Legacy player invitations</p>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-black">{members.filter((member) => member.invitationState === 'UNCLAIMED').length} players need a sign-in email</h2>
-              <p className="mt-1 max-w-2xl text-sm text-slate-400">Assign the email that each person will use for OTP sign-in. Their first verified code claims the existing profile and all of its historical rosters. Assignment does not send an email, so share the normal sign-in link with them.</p>
+        {!loading && pendingInvitationCount > 0 && (
+          <section className="rounded-2xl border border-blue-400/30 bg-blue-50 p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">Legacy player invitations</p>
+            <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-black">{activeMembers.filter((member) => member.invitationState === 'UNCLAIMED').length} players need a sign-in email</h2>
+                <p className="mt-1 max-w-2xl text-sm text-slate-400">Assign the email that each person will use for OTP sign-in. Their first verified code claims the existing profile and all of its historical rosters. Assignment does not send an email, so share the normal sign-in link with them.</p>
+              </div>
+              <div className="flex gap-2 text-xs font-bold uppercase tracking-wide">
+                <span className="rounded-full bg-slate-800 px-3 py-1.5 text-slate-300">{activeMembers.filter((member) => member.invitationState === 'INVITED').length} waiting</span>
+                <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-700">{activeMembers.filter((member) => member.invitationState === 'CLAIMED').length} claimed</span>
+              </div>
             </div>
-            <div className="flex gap-2 text-xs font-bold uppercase tracking-wide">
-              <span className="rounded-full bg-slate-800 px-3 py-1.5 text-slate-300">{members.filter((member) => member.invitationState === 'INVITED').length} waiting</span>
-              <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-700">{members.filter((member) => member.invitationState === 'CLAIMED').length} claimed</span>
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         <form className="grid gap-4 rounded-2xl border border-white/10 bg-slate-900 p-5 md:grid-cols-[1fr_1.4fr_180px_auto] md:items-end" onSubmit={invite}>
           <div className="md:col-span-4">
