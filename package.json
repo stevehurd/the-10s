@@ -20,6 +20,7 @@
     "migrate:2025-rehearsal": "node scripts/rehearse-2025-fixture.mjs && node --test scripts/lib/legacy-2025-rehearsal.test.mjs",
     "migration:check": "node scripts/check-migration-history.mjs",
     "migration:inspect": "node scripts/inspect-migration-state.mjs",
+    "backup:production": "node scripts/backup-production-postgres.mjs",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",

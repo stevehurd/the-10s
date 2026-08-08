@@ -31,6 +31,22 @@ The synthetic rehearsal proves the transformation rules and failure handling. It
 - Configure the destination through runtime-injected credentials; do not save production credentials in the repository.
 - Confirm the intended commissioner email outside logs and source control.
 
+Store the production `DATABASE_URL` and non-pooling `DIRECT_URL` in a dedicated
+1Password production item. Create the logical backup without writing credentials
+to disk or stdout:
+
+```sh
+op run --account my.1password.com --env-file=.env.production.op -- \
+  npm run backup:production -- \
+  --output-dir "$HOME/Documents/Football Pool Backups"
+```
+
+The ignored `.env.production.op` file contains only 1Password references. The
+backup command refuses an output directory inside the repository, uses
+`pg_dump` from the `postgres:17-alpine` Docker image, writes an owner-readable
+custom-format archive, and creates a sidecar JSON file with its timestamp, byte
+size, and SHA-256 checksum. It never prints the connection URL or password.
+
 Record every restored-copy rehearsal with:
 
 - source deployment identifier and database provider
