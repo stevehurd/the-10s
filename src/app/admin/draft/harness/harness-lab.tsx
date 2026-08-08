@@ -68,6 +68,36 @@ export default function HarnessLab({ seasons }: { seasons: HarnessSeason[] }) {
     }
   }
 
+  async function remove(session: HarnessSession) {
+    if (!window.confirm(`Delete “${session.name}” and all of its isolated test picks?`)) return
+    setBusy(`DELETE-${session.id}`)
+    setMessage(null)
+    try {
+      if (session.status === 'LIVE') {
+        const pauseResponse = await fetch(`/api/draft-sessions/${session.id}/control`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'PAUSE' }),
+        })
+        if (!pauseResponse.ok) {
+          const payload = await pauseResponse.json().catch(() => null)
+          throw new Error(payload?.error || 'Unable to pause harness run for deletion')
+        }
+      }
+      const response = await fetch(`/api/draft-sessions/${session.id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error || 'Unable to delete harness run')
+      }
+      setMessage('Harness run deleted.')
+      router.refresh()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to delete harness run')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   if (!season) {
     return <p className="border border-orange-500/30 bg-orange-500/10 p-5">No synthetic development season is available.</p>
   }
@@ -127,6 +157,7 @@ export default function HarnessLab({ seasons }: { seasons: HarnessSeason[] }) {
                   <button className="rounded-lg border border-orange-500/40 px-3 py-2 text-sm font-bold text-orange-600 disabled:opacity-40" disabled={busy !== null || session.status === 'COMPLETED'} onClick={() => void run('LIFECYCLE', session.id)}>Lifecycle test</button>
                   <button className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40" disabled={busy !== null || session.status === 'COMPLETED'} onClick={() => void run('COMPLETE', session.id)}>Complete simulation</button>
                   <Link className="rounded-lg border border-slate-400 px-3 py-2 text-sm font-bold" href={`/draft/${session.id}`}>Open room</Link>
+                  <button className="rounded-lg border border-red-500/40 px-3 py-2 text-sm font-bold text-red-600 disabled:opacity-40" disabled={busy !== null} onClick={() => void remove(session)}>Delete run</button>
                 </div>
               </div>
               {session.reports.length > 0 ? (
