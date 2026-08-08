@@ -1,0 +1,95 @@
+// Immutable reference for the schema that was deployed with the 2025 app.
+// It is used only to generate and verify the baseline/expansion migrations.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  drafts    Draft[]
+
+  @@map("users")
+}
+
+model Team {
+  id           String   @id @default(cuid())
+  name         String
+  abbreviation String   @map("abbr")
+  conference   String?
+  division     String?
+  league       String
+  externalId   String?  @map("external_id")
+  logoUrl      String?  @map("logo_url")
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  drafts       Draft[]
+  homeGames    Game[]   @relation("HomeTeam")
+  awayGames    Game[]   @relation("AwayTeam")
+  gameWins     Game[]   @relation("Winner")
+
+  @@unique([name, league])
+  @@map("teams")
+}
+
+model Season {
+  id        String   @id @default(cuid())
+  year      Int
+  name      String
+  status    String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  drafts    Draft[]
+  games     Game[]
+
+  @@map("seasons")
+}
+
+model Draft {
+  id         String   @id @default(cuid())
+  seasonId   String   @map("season_id")
+  userId     String   @map("user_id")
+  teamId     String   @map("team_id")
+  round      Int
+  pickNumber Int      @map("pick_number")
+  isKeeper   Boolean  @default(false) @map("is_keeper")
+  createdAt  DateTime @default(now()) @map("created_at")
+  season     Season   @relation(fields: [seasonId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+  team       Team     @relation(fields: [teamId], references: [id])
+
+  @@map("drafts")
+}
+
+model Game {
+  id         String   @id @default(cuid())
+  seasonId   String   @map("season_id")
+  homeTeamId String   @map("home_team_id")
+  awayTeamId String   @map("away_team_id")
+  homeScore  Int?     @map("home_score")
+  awayScore  Int?     @map("away_score")
+  winnerId   String?  @map("winner_id")
+  gameDate   DateTime @map("game_date")
+  week       Int
+  gameType   String   @map("game_type")
+  externalId String?  @map("external_id")
+  status     String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  season     Season   @relation(fields: [seasonId], references: [id])
+  homeTeam   Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam   Team     @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  winner     Team?    @relation("Winner", fields: [winnerId], references: [id])
+
+  @@map("games")
+}

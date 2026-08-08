@@ -1,26 +1,145 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+  --background: #090909;
+  --foreground: #f5f5f5;
+  --color-slate-950: #090909;
+  --color-slate-900: #111111;
+  --color-slate-800: #242424;
+  --color-slate-700: #39393b;
+  --color-slate-600: #4b4b4d;
+  --color-slate-500: #707072;
+  --color-slate-400: #9e9ea0;
+  --color-slate-300: #cacacb;
+  --color-slate-200: #e5e5e5;
+  --color-slate-100: #f5f5f5;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-emerald-200: #9bbaff;
+  --color-emerald-300: #6f98ff;
+  --color-emerald-400: #4f7cff;
+  --color-blue-50: #0d1833;
+  --color-blue-100: #12234b;
+  --color-blue-200: #9bbaff;
+  --color-blue-300: #7aa2ff;
+  --color-blue-400: #5b8cff;
+  --color-blue-500: #3974ff;
+  --color-blue-600: #2f6bff;
+  --color-blue-700: #8fb0ff;
+  --color-blue-800: #b8ccff;
+  --color-blue-900: #dbe6ff;
+  --color-amber-50: #2b1709;
+  --color-amber-100: #43230d;
+  --color-amber-200: #ffc39f;
+  --color-amber-300: #ff9b63;
+  --color-amber-400: #ff7a35;
+  --color-orange-100: #43230d;
+  --color-orange-300: #ff9b63;
+  --color-orange-400: #ff7a35;
+  --color-red-50: #300b0b;
+  --color-red-200: #ffaaa7;
+  --color-red-700: #ff8c88;
+  --color-red-800: #ffc2bf;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --background: #f5f5f5;
+  --foreground: #111111;
+  --color-slate-950: #f5f5f5;
+  --color-slate-900: #ffffff;
+  --color-slate-800: #e5e5e5;
+  --color-slate-700: #cacacb;
+  --color-slate-600: #9e9ea0;
+  --color-slate-500: #707072;
+  --color-slate-400: #4b4b4d;
+  --color-slate-300: #39393b;
+  --color-slate-200: #242424;
+  --color-slate-100: #111111;
+  --color-white: #111111;
+  --color-black: #ffffff;
+  --color-emerald-200: #1746b8;
+  --color-emerald-300: #2054d4;
+  --color-emerald-400: #2f6bff;
+  --color-blue-50: #eef3ff;
+  --color-blue-100: #dbe6ff;
+  --color-blue-200: #b8ccff;
+  --color-blue-300: #7aa2ff;
+  --color-blue-400: #3974ff;
+  --color-blue-500: #2054d4;
+  --color-blue-600: #1746b8;
+  --color-blue-700: #123996;
+  --color-blue-800: #0f307d;
+  --color-blue-900: #0d2868;
+  --color-amber-50: #fff2e8;
+  --color-amber-100: #ffe0cc;
+  --color-amber-200: #d85616;
+  --color-amber-300: #c54910;
+  --color-amber-400: #b63f0c;
+  --color-orange-100: #ffe0cc;
+  --color-orange-300: #d85616;
+  --color-orange-400: #c54910;
+  --color-blue-200: #003ec7;
+  --color-blue-300: #1151ff;
+  --color-rose-100: #780700;
+  --color-rose-300: #d30005;
+  --color-rose-400: #d30005;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.admin-shell input,
+.admin-shell select,
+.admin-shell textarea {
+  background-color: var(--color-slate-900);
+  color: var(--foreground);
+}
+
+::selection {
+  background: #111111;
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] ::selection {
+  background: #ffffff;
+  color: #111111;
+}
+
+button,
+a,
+select,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--foreground) 35%, transparent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

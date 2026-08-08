@@ -4,22 +4,31 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types src/lib/draft/*.test.ts src/lib/*.test.ts scripts/lib/*.test.mjs",
     "postinstall": "prisma generate",
-    "db:setup": "node scripts/setup-db.js",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev"
+    "db:setup": "node scripts/setup-db.mjs",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed:demo": "node scripts/seed-development.mjs --reset-development-pool",
+    "db:seed:sportsdata": "node scripts/seed-development.mjs --reset-development-pool --sportsdata",
+    "db:verify:demo": "node scripts/verify-development-seed.mjs",
+    "migrate:2025-data": "node scripts/migrate-2025-data.mjs",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:check": "node scripts/check-supabase-setup.mjs"
   },
   "dependencies": {
-    "@next-auth/prisma-adapter": "^1.0.7",
-    "@prisma/client": "^6.15.0",
-    "next": "^15.5.9",
-    "next-auth": "^4.24.11",
-    "prisma": "^6.15.0",
-    "react": "^19.1.4",
-    "react-dom": "^19.1.4"
+    "@prisma/client": "^6.19.3",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.2",
+    "next": "^16.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -28,7 +37,9 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.2",
+    "eslint-config-next": "^16.3.0",
+    "prisma": "^6.19.3",
+    "supabase": "^2.112.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

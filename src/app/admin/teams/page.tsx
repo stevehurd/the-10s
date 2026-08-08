@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 
+import TeamMark from '@/components/team-mark'
+
 interface Team {
   id: string
   name: string
@@ -56,51 +58,52 @@ export default function TeamsPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
+    <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-8">
+      <div className="mx-auto max-w-7xl">
         {/* Breadcrumb */}
         <nav className="mb-6">
-          <div className="flex items-center space-x-2 text-sm text-gray-500">
-            <a href="/admin" className="hover:text-gray-700">Admin</a>
+          <div className="flex items-center space-x-2 text-sm text-slate-500">
+            <a href="/admin" className="hover:text-slate-100">Admin</a>
             <span>/</span>
-            <span className="text-gray-900 font-medium">Teams</span>
+            <span className="font-medium text-slate-100">Teams</span>
           </div>
         </nav>
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Team Data</h1>
-          <p className="text-gray-600">NFL and college team information from SportsDataIO</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-300">SportsDataIO catalog</p>
+          <h1 className="mb-2 mt-2 text-4xl font-black">Team data</h1>
+          <p className="text-slate-400">NFL and college team information from SportsDataIO</p>
         </div>
 
         {/* Filter Buttons */}
-        <div className="flex space-x-2 mb-6">
+        <div className="mb-6 flex flex-wrap gap-2">
           <button
             onClick={() => setFilter('ALL')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`rounded-full px-4 py-2 font-medium transition-colors ${
               filter === 'ALL' 
                 ? 'bg-blue-600 text-white' 
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
             }`}
           >
             All Teams ({teams.length})
           </button>
           <button
             onClick={() => setFilter('NFL')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`rounded-full px-4 py-2 font-medium transition-colors ${
               filter === 'NFL' 
                 ? 'bg-blue-600 text-white' 
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
             }`}
           >
             NFL ({nflTeams.length})
           </button>
           <button
             onClick={() => setFilter('COLLEGE')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`rounded-full px-4 py-2 font-medium transition-colors ${
               filter === 'COLLEGE' 
                 ? 'bg-blue-600 text-white' 
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
             }`}
           >
             College ({collegeTeams.length})
@@ -110,45 +113,28 @@ export default function TeamsPage() {
         {/* Teams Display */}
         {loading ? (
           <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500"></div>
           </div>
         ) : filter === 'COLLEGE' ? (
           /* College teams grouped by conference */
           <div className="space-y-8">
             {sortedConferences.map(conference => (
-              <div key={conference} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-orange-50 to-orange-100 px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-xl font-bold text-gray-900">{conference}</h2>
-                  <p className="text-sm text-gray-600 mt-1">
+              <section key={conference} className="overflow-hidden border-y border-white/10 bg-slate-900">
+                <div className="border-b border-orange-400/20 bg-orange-400/10 px-6 py-4">
+                  <h2 className="text-xl font-bold">{conference}</h2>
+                  <p className="mt-1 text-sm text-slate-400">
                     {collegeTeamsByConference[conference].length} teams
                   </p>
                 </div>
                 <div className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {collegeTeamsByConference[conference].map((team) => (
-                      <div key={team.id} className="bg-gray-50 rounded-xl shadow-sm p-4 border border-gray-200 hover:shadow-md hover:bg-white transition-all">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
-                            {team.logoUrl ? (
-                              <img 
-                                src={team.logoUrl} 
-                                alt={`${team.name} logo`}
-                                className="w-8 h-8 object-contain"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  const fallback = target.nextElementSibling as HTMLElement;
-                                  if (fallback) fallback.style.display = 'flex';
-                                }}
-                              />
-                            ) : null}
-                            <div className={`w-full h-full bg-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-xs ${team.logoUrl ? 'hidden' : 'flex'}`}>
-                              {team.abbreviation}
-                            </div>
-                          </div>
+                      <div key={team.id} className="border border-white/10 bg-slate-950/45 p-4 transition hover:border-blue-500/40">
+                        <div className="flex items-center gap-3">
+                          <TeamMark abbreviation={team.abbreviation} logoUrl={team.logoUrl} size="lg" />
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-gray-900 text-sm truncate">{team.name}</h3>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <h3 className="truncate text-sm font-semibold">{team.name}</h3>
+                            <p className="mt-1 text-xs text-slate-500">
                               {team.abbreviation}
                             </p>
                           </div>
@@ -157,54 +143,37 @@ export default function TeamsPage() {
                     ))}
                   </div>
                 </div>
-              </div>
+              </section>
             ))}
           </div>
         ) : (
           /* Regular grid for NFL and ALL teams */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredTeams.map((team) => (
-              <div key={team.id} className="bg-white rounded-xl shadow-sm p-4 border border-gray-200 hover:shadow-md transition-shadow">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
-                    {team.logoUrl ? (
-                      <img 
-                        src={team.logoUrl} 
-                        alt={`${team.name} logo`}
-                        className="w-8 h-8 object-contain"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const fallback = target.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    <div className={`w-full h-full ${team.league === 'NFL' ? 'bg-blue-600' : 'bg-orange-600'} rounded-lg flex items-center justify-center text-white font-bold text-xs ${team.logoUrl ? 'hidden' : 'flex'}`}>
-                      {team.abbreviation}
-                    </div>
-                  </div>
+              <article key={team.id} className="border border-white/10 bg-slate-900 p-4 transition hover:border-blue-500/40">
+                <div className="flex items-center gap-3">
+                  <TeamMark abbreviation={team.abbreviation} logoUrl={team.logoUrl} size="lg" />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">{team.name}</h3>
-                    <p className="text-sm text-gray-600">
+                    <h3 className="truncate font-semibold">{team.name}</h3>
+                    <p className="text-sm text-slate-400">
                       {team.conference} {team.division && `${team.division}`}
                     </p>
                   </div>
                 </div>
                 <div className="mt-3">
-                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                  <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
                     team.league === 'NFL' 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-orange-100 text-orange-800'
+                      ? 'bg-blue-500/15 text-blue-300'
+                      : 'bg-orange-400/15 text-orange-300'
                   }`}>
                     {team.league}
                   </span>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </main>
   )
 }

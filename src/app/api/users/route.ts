@@ -1,87 +1,88 @@
 import { NextResponse } from 'next/server'
+
+import { authorizeApi } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
 
-export async function GET() {
-  try {
-    const users = await prisma.user.findMany({
-      include: {
-        drafts: {
-          include: {
-            team: true
-          },
-          orderBy: {
-            round: 'asc'
-          }
-        }
-      },
-      orderBy: {
-        name: 'asc'
-      }
-    })
+const MEMBER_ROLES = new Set(['MEMBER', 'COMMISSIONER'])
 
-    return NextResponse.json(users)
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to fetch users' },
-      { status: 500 }
-    )
-  }
+export async function GET() {
+  const authorization = await authorizeApi('COMMISSIONER')
+  if (!authorization.authorized) return authorization.response
+
+  const memberships = await prisma.poolMembership.findMany({
+    where: { poolId: authorization.membership.poolId },
+    orderBy: { user: { name: 'asc' } },
+    include: {
+      user: { select: { id: true, name: true, email: true, authUserId: true } },
+    },
+  })
+
+  return NextResponse.json(
+    memberships.map((membership) => ({
+      id: membership.user.id,
+      name: membership.user.name,
+      email: membership.user.email,
+      role: membership.role,
+      status: membership.status,
+      hasSignedIn: Boolean(membership.user.authUserId),
+    })),
+  )
 }
 
 export async function POST(request: Request) {
-  try {
-    const body = await request.json()
-    const { name, email } = body
+  const authorization = await authorizeApi('COMMISSIONER')
+  if (!authorization.authorized) return authorization.response
 
-    if (!name?.trim()) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      )
-    }
-
-    // Check if user already exists by name or email (if email provided)
-    const whereConditions: ({ name: string } | { email: string })[] = [{ name: name.trim() }]
-    if (email?.trim()) {
-      whereConditions.push({ email: email.trim() })
-    }
-    
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: whereConditions
-      }
-    })
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this name or email already exists' },
-        { status: 400 }
-      )
-    }
-    
-    const user = await prisma.user.create({
-      data: {
-        name: name.trim(),
-        email: email?.trim() || null
-      },
-      include: {
-        drafts: {
-          include: {
-            team: true
-          },
-          orderBy: {
-            round: 'asc'
-          }
-        }
-      }
-    })
-
-    return NextResponse.json(user)
-  } catch (error) {
-    console.error('User creation error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create user' },
-      { status: 500 }
-    )
+  const body = await request.json()
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+  const role = MEMBER_ROLES.has(body.role) ? body.role : 'MEMBER'
+  if (!name || !email) {
+    return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
   }
+
+  const existing = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+  })
+
+  const result = await prisma.$transaction(async (tx) => {
+    const user = existing
+      ? await tx.user.update({ where: { id: existing.id }, data: { name, email } })
+      : await tx.user.create({ data: { name, email } })
+    const membership = await tx.poolMembership.upsert({
+      where: {
+        poolId_userId: { poolId: authorization.membership.poolId, userId: user.id },
+      },
+      update: { role, status: 'ACTIVE' },
+      create: {
+        poolId: authorization.membership.poolId,
+        userId: user.id,
+        role,
+        status: 'ACTIVE',
+      },
+    })
+    await tx.auditEvent.create({
+      data: {
+        poolId: authorization.membership.poolId,
+        actorUserId: authorization.appUser.id,
+        action: existing ? 'POOL_MEMBER_REACTIVATED' : 'POOL_MEMBER_INVITED',
+        entityType: 'PoolMembership',
+        entityId: membership.id,
+        data: { userId: user.id, role },
+      },
+    })
+    return { user, membership }
+  })
+
+  return NextResponse.json(
+    {
+      id: result.user.id,
+      name: result.user.name,
+      email: result.user.email,
+      role: result.membership.role,
+      status: result.membership.status,
+      hasSignedIn: Boolean(result.user.authUserId),
+    },
+    { status: 201 },
+  )
 }

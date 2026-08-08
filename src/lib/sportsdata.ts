@@ -48,6 +48,7 @@ export interface SportsDataStanding {
   Team: string
   Wins: number
   Losses: number
+  Ties?: number
   ConferenceWins: number
   ConferenceLosses: number
   GlobalTeamID: number
@@ -154,6 +155,7 @@ export async function fetchCollegeStandings(season: number = 2025): Promise<Spor
         Team: `${team.School} ${team.Name}`,
         Wins: team.Wins || 0,
         Losses: team.Losses || 0,
+        Ties: team.Ties || 0,
         ConferenceWins: team.ConferenceWins || 0,
         ConferenceLosses: team.ConferenceLosses || 0,
         GlobalTeamID: team.GlobalTeamID,

@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { authorizeApi } from '@/lib/auth/authorization'
 
 export async function POST() {
+  const authorization = await authorizeApi('COMMISSIONER')
+  if (!authorization.authorized) return authorization.response
+
   try {
     // Reset all NFL teams to 0-0
     const result = await prisma.team.updateMany({

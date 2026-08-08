@@ -1,71 +1,363 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Vercel uses Supabase's transaction pooler at runtime. Prisma migrations
+  // use the session/direct connection so schema changes are never attempted
+  // through a transaction-pooling connection.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// User model for authentication and pool participants
+// Authentication identities are owned by Supabase Auth. This profile stores
+// application data and links to auth.users through authUserId.
 model User {
-  id        String   @id @default(cuid())
-  email     String?  @unique
-  name      String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String   @id @default(cuid())
+  authUserId String?  @unique @map("auth_user_id")
+  email      String?  @unique
+  name       String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  // Relations
-  drafts    Draft[]
-  
+  // Legacy 2025 selections retained until the verified data migration.
+  drafts Draft[]
+
+  memberships          PoolMembership[]
+  seasonParticipants   SeasonParticipant[]
+  retentionDecisions   RosterSlot[]            @relation("RetentionDecidedBy")
+  selectionsMade       DraftSelection[]        @relation("SelectionPickedBy")
+  eligibilityApprovals SeasonTeamEligibility[] @relation("EligibilityApprovedBy")
+  auditEvents          AuditEvent[]            @relation("AuditActor")
+
   @@map("users")
 }
 
-// Teams model for NFL and College FBS teams
-model Team {
-  id           String   @id @default(cuid())
-  name         String
-  abbreviation String   @map("abbr")
-  conference   String?
-  division     String?  // NFL only
-  league       String   // 'NFL' or 'COLLEGE'
-  externalId   String?  @map("external_id")
-  logoUrl      String?  @map("logo_url")
-  wins         Int      @default(0) // Current season wins
-  losses       Int      @default(0) // Current season losses
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  drafts       Draft[]
-  homeGames    Game[] @relation("HomeTeam")
-  awayGames    Game[] @relation("AwayTeam")
-  gameWins     Game[] @relation("Winner")
-
-  @@unique([name, league])
-  @@map("teams")
-}
-
-// Season model to track different years
-model Season {
+model Pool {
   id        String   @id @default(cuid())
-  year      Int
-  name      String   // "2024-2025"
-  status    String   // 'SETUP', 'DRAFT', 'ACTIVE', 'COMPLETED'
+  name      String
+  slug      String   @unique
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // Relations
-  drafts Draft[]
-  games  Game[]
+  memberships PoolMembership[]
+  seats       PoolSeat[]
+  seasons     Season[]
+  auditEvents AuditEvent[]
 
+  @@map("pools")
+}
+
+model PoolMembership {
+  id        String   @id @default(cuid())
+  poolId    String   @map("pool_id")
+  userId    String   @map("user_id")
+  role      String   @default("MEMBER")
+  status    String   @default("INVITED")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  pool Pool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, userId])
+  @@index([userId])
+  @@map("pool_memberships")
+}
+
+// A seat carries roster and ranking continuity across seasons even when the
+// person occupying it changes.
+model PoolSeat {
+  id        String   @id @default(cuid())
+  poolId    String   @map("pool_id")
+  label     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  pool         Pool                @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  participants SeasonParticipant[]
+
+  @@index([poolId, active])
+  @@map("pool_seats")
+}
+
+model Team {
+  id                     String   @id @default(cuid())
+  name                   String
+  abbreviation           String   @map("abbr")
+  conference             String?
+  division               String?
+  league                 String
+  externalId             String?  @map("external_id")
+  sportsDataTeamId       String?  @map("sportsdata_team_id")
+  sportsDataGlobalTeamId String?  @map("sportsdata_global_team_id")
+  logoUrl                String?  @map("logo_url")
+  active                 Boolean  @default(true)
+  // Legacy current-season totals retained until readers use TeamSeasonRecord.
+  wins                   Int      @default(0)
+  losses                 Int      @default(0)
+  ties                   Int      @default(0)
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  drafts               Draft[]
+  homeGames            Game[]                  @relation("HomeTeam")
+  awayGames            Game[]                  @relation("AwayTeam")
+  gameWins             Game[]                  @relation("Winner")
+  seasonRecords        TeamSeasonRecord[]
+  seasonEligibility    SeasonTeamEligibility[]
+  rosterSlots          RosterSlot[]            @relation("RosterTeam")
+  inheritedRosterSlots RosterSlot[]            @relation("InheritedTeam")
+  draftSelections      DraftSelection[]
+
+  @@unique([name, league])
+  @@index([league, active])
+  @@index([sportsDataTeamId])
+  @@index([sportsDataGlobalTeamId])
+  @@map("teams")
+}
+
+model Season {
+  id               String    @id @default(cuid())
+  poolId           String?   @map("pool_id")
+  previousSeasonId String?   @map("previous_season_id")
+  year             Int
+  name             String
+  status           String
+  finalizedAt      DateTime? @map("finalized_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  pool            Pool?                   @relation(fields: [poolId], references: [id], onDelete: Restrict)
+  previousSeason  Season?                 @relation("SeasonPredecessor", fields: [previousSeasonId], references: [id], onDelete: SetNull)
+  nextSeasons     Season[]                @relation("SeasonPredecessor")
+  drafts          Draft[]
+  games           Game[]
+  participants    SeasonParticipant[]
+  teamRecords     TeamSeasonRecord[]
+  teamEligibility SeasonTeamEligibility[]
+  rosterSlots     RosterSlot[]
+  draftSessions   DraftSession[]
+  auditEvents     AuditEvent[]
+
+  @@unique([poolId, year])
+  @@index([status])
   @@map("seasons")
 }
 
-// Draft model to track user picks and keepers
+model SeasonParticipant {
+  id                   String    @id @default(cuid())
+  seasonId             String    @map("season_id")
+  poolSeatId           String    @map("pool_seat_id")
+  userId               String    @map("user_id")
+  baseDraftOrder       Int?      @map("base_draft_order")
+  finalRank            Int?      @map("final_rank")
+  totalWins            Int       @default(0) @map("total_wins")
+  nflWins              Int       @default(0) @map("nfl_wins")
+  collegeWins          Int       @default(0) @map("college_wins")
+  isReplacement        Boolean   @default(false) @map("is_replacement")
+  releaseOverride      Boolean   @default(false) @map("release_override")
+  decisionsSubmittedAt DateTime? @map("decisions_submitted_at")
+  decisionsLockedAt    DateTime? @map("decisions_locked_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  season      Season           @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  poolSeat    PoolSeat         @relation(fields: [poolSeatId], references: [id], onDelete: Restrict)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  rosterSlots RosterSlot[]
+  draftTurns  DraftTurn[]
+  selections  DraftSelection[]
+
+  @@unique([seasonId, poolSeatId])
+  @@unique([seasonId, userId])
+  @@unique([seasonId, baseDraftOrder])
+  @@index([poolSeatId])
+  @@index([userId])
+  @@map("season_participants")
+}
+
+model TeamSeasonRecord {
+  id               String    @id @default(cuid())
+  seasonId         String    @map("season_id")
+  teamId           String    @map("team_id")
+  wins             Int       @default(0)
+  losses           Int       @default(0)
+  ties             Int       @default(0)
+  regularWins      Int       @default(0) @map("regular_wins")
+  regularLosses    Int       @default(0) @map("regular_losses")
+  postseasonWins   Int       @default(0) @map("postseason_wins")
+  postseasonLosses Int       @default(0) @map("postseason_losses")
+  source           String    @default("SPORTSDATAIO")
+  sourceUpdatedAt  DateTime? @map("source_updated_at")
+  finalizedAt      DateTime? @map("finalized_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  @@unique([seasonId, teamId])
+  @@index([teamId])
+  @@map("team_season_records")
+}
+
+model SeasonTeamEligibility {
+  id                   String    @id @default(cuid())
+  seasonId             String    @map("season_id")
+  teamId               String    @map("team_id")
+  status               String    @default("PENDING")
+  source               String    @default("SPORTSDATAIO")
+  reviewReason         String?   @map("review_reason")
+  nameSnapshot         String    @map("name_snapshot")
+  abbreviationSnapshot String    @map("abbreviation_snapshot")
+  conferenceSnapshot   String?   @map("conference_snapshot")
+  divisionSnapshot     String?   @map("division_snapshot")
+  leagueSnapshot       String    @map("league_snapshot")
+  approvedAt           DateTime? @map("approved_at")
+  approvedById         String?   @map("approved_by_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  season     Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  team       Team   @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  approvedBy User?  @relation("EligibilityApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([seasonId, teamId])
+  @@index([seasonId, status])
+  @@map("season_team_eligibility")
+}
+
+model RosterSlot {
+  id                  String    @id @default(cuid())
+  seasonId            String    @map("season_id")
+  seasonParticipantId String    @map("season_participant_id")
+  number              Int
+  teamId              String?   @map("team_id")
+  inheritedTeamId     String?   @map("inherited_team_id")
+  retentionChoice     String    @default("PENDING") @map("retention_choice")
+  source              String    @default("DRAFT")
+  decisionAt          DateTime? @map("decision_at")
+  decisionByUserId    String?   @map("decision_by_user_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  season            Season            @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  seasonParticipant SeasonParticipant @relation(fields: [seasonParticipantId], references: [id], onDelete: Cascade)
+  team              Team?             @relation("RosterTeam", fields: [teamId], references: [id], onDelete: Restrict)
+  inheritedTeam     Team?             @relation("InheritedTeam", fields: [inheritedTeamId], references: [id], onDelete: Restrict)
+  decisionBy        User?             @relation("RetentionDecidedBy", fields: [decisionByUserId], references: [id], onDelete: SetNull)
+  draftTurns        DraftTurn[]
+  draftSelections   DraftSelection[]
+
+  @@unique([seasonParticipantId, number])
+  @@unique([seasonId, teamId])
+  @@index([seasonId, number])
+  @@index([inheritedTeamId])
+  @@map("roster_slots")
+}
+
+model DraftSession {
+  id               String    @id @default(cuid())
+  seasonId         String    @map("season_id")
+  name             String
+  mode             String    @default("OFFICIAL")
+  status           String    @default("SCHEDULED")
+  pickSeconds      Int       @default(90) @map("pick_seconds")
+  startsAt         DateTime? @map("starts_at")
+  meetingUrl       String?   @map("meeting_url")
+  startedAt        DateTime? @map("started_at")
+  completedAt      DateTime? @map("completed_at")
+  currentTurnIndex Int       @default(0) @map("current_turn_index")
+  revision         Int       @default(0)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  season      Season           @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  turns       DraftTurn[]
+  selections  DraftSelection[]
+  auditEvents AuditEvent[]
+
+  @@index([seasonId, mode, status])
+  @@map("draft_sessions")
+}
+
+model DraftTurn {
+  id                  String    @id @default(cuid())
+  draftSessionId      String    @map("draft_session_id")
+  seasonParticipantId String    @map("season_participant_id")
+  rosterSlotId        String    @map("roster_slot_id")
+  round               Int
+  orderInRound        Int       @map("order_in_round")
+  overallIndex        Int       @map("overall_index")
+  status              String    @default("PENDING")
+  deadlineAt          DateTime? @map("deadline_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  draftSession      DraftSession      @relation(fields: [draftSessionId], references: [id], onDelete: Cascade)
+  seasonParticipant SeasonParticipant @relation(fields: [seasonParticipantId], references: [id], onDelete: Restrict)
+  rosterSlot        RosterSlot        @relation(fields: [rosterSlotId], references: [id], onDelete: Restrict)
+  selection         DraftSelection?
+
+  @@unique([draftSessionId, overallIndex])
+  @@unique([draftSessionId, rosterSlotId])
+  @@index([seasonParticipantId])
+  @@map("draft_turns")
+}
+
+model DraftSelection {
+  id                  String   @id @default(cuid())
+  draftSessionId      String   @map("draft_session_id")
+  draftTurnId         String   @unique @map("draft_turn_id")
+  seasonParticipantId String   @map("season_participant_id")
+  rosterSlotId        String   @map("roster_slot_id")
+  teamId              String   @map("team_id")
+  selectionType       String   @default("MANUAL") @map("selection_type")
+  pickedByUserId      String?  @map("picked_by_user_id")
+  priorWins           Int      @default(0) @map("prior_wins")
+  priorLosses         Int      @default(0) @map("prior_losses")
+  priorTies           Int      @default(0) @map("prior_ties")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  draftSession      DraftSession      @relation(fields: [draftSessionId], references: [id], onDelete: Cascade)
+  draftTurn         DraftTurn         @relation(fields: [draftTurnId], references: [id], onDelete: Cascade)
+  seasonParticipant SeasonParticipant @relation(fields: [seasonParticipantId], references: [id], onDelete: Restrict)
+  rosterSlot        RosterSlot        @relation(fields: [rosterSlotId], references: [id], onDelete: Restrict)
+  team              Team              @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  pickedBy          User?             @relation("SelectionPickedBy", fields: [pickedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([draftSessionId, teamId])
+  @@index([seasonParticipantId])
+  @@map("draft_selections")
+}
+
+model AuditEvent {
+  id             String   @id @default(cuid())
+  poolId         String   @map("pool_id")
+  seasonId       String?  @map("season_id")
+  draftSessionId String?  @map("draft_session_id")
+  actorUserId    String?  @map("actor_user_id")
+  action         String
+  entityType     String   @map("entity_type")
+  entityId       String?  @map("entity_id")
+  data           Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  pool         Pool          @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  season       Season?       @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  draftSession DraftSession? @relation(fields: [draftSessionId], references: [id], onDelete: SetNull)
+  actor        User?         @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([poolId, createdAt])
+  @@index([draftSessionId, createdAt])
+  @@map("audit_events")
+}
+
+// Legacy selection model used by the 2025 application. Data will be copied to
+// RosterSlot before this model is removed in a later, separately verified migration.
 model Draft {
   id         String   @id @default(cuid())
   seasonId   String   @map("season_id")
@@ -76,7 +368,6 @@ model Draft {
   isKeeper   Boolean  @default(false) @map("is_keeper")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  // Relations
   season Season @relation(fields: [seasonId], references: [id])
   user   User   @relation(fields: [userId], references: [id])
   team   Team   @relation(fields: [teamId], references: [id])
@@ -84,24 +375,22 @@ model Draft {
   @@map("drafts")
 }
 
-// Games model to track wins and losses
 model Game {
-  id          String    @id @default(cuid())
-  seasonId    String    @map("season_id")
-  homeTeamId  String    @map("home_team_id")
-  awayTeamId  String    @map("away_team_id")
-  homeScore   Int?      @map("home_score")
-  awayScore   Int?      @map("away_score")
-  winnerId    String?   @map("winner_id")
-  gameDate    DateTime  @map("game_date")
-  week        Int
-  gameType    String    @map("game_type") // 'REGULAR', 'PLAYOFF', 'BOWL', 'CHAMPIONSHIP'
-  externalId  String?   @map("external_id")
-  status      String    // 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED'
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id         String   @id @default(cuid())
+  seasonId   String   @map("season_id")
+  homeTeamId String   @map("home_team_id")
+  awayTeamId String   @map("away_team_id")
+  homeScore  Int?     @map("home_score")
+  awayScore  Int?     @map("away_score")
+  winnerId   String?  @map("winner_id")
+  gameDate   DateTime @map("game_date")
+  week       Int
+  gameType   String   @map("game_type")
+  externalId String?  @map("external_id")
+  status     String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  // Relations
   season   Season @relation(fields: [seasonId], references: [id])
   homeTeam Team   @relation("HomeTeam", fields: [homeTeamId], references: [id])
   awayTeam Team   @relation("AwayTeam", fields: [awayTeamId], references: [id])

@@ -1,269 +1,120 @@
-'use client'
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
-import { useState, useEffect } from 'react'
+import { SeasonStageTracker } from '@/components/product-header'
+import { getCurrentAppUser } from '@/lib/auth/authorization'
+import { prisma } from '@/lib/db'
 
-interface Team {
-  id: string
-  name: string
-  abbreviation: string
-  conference: string | null
-  division: string | null
-  league: string
-  logoUrl: string | null
-}
+export default async function AdminPage() {
+  const context = await getCurrentAppUser()
+  if (!context) redirect('/login')
+  const membership = context.appUser.memberships.find((candidate) => candidate.role === 'COMMISSIONER')
+  if (!membership) redirect('/')
 
-interface User {
-  id: string
-  name: string
-  email: string
-  createdAt: string
-}
-
-interface Season {
-  id: string
-  year: number
-  name: string
-  status: string
-}
-
-export default function AdminPage() {
-  const [teams, setTeams] = useState<Team[]>([])
-  const [users, setUsers] = useState<User[]>([])
-  const [seasons, setSeasons] = useState<Season[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    try {
-      const [teamsRes, usersRes, seasonsRes] = await Promise.all([
-        fetch('/api/teams'),
-        fetch('/api/users'),
-        fetch('/api/seasons')
-      ])
-      
-      const teamsData = await teamsRes.json()
-      const usersData = await usersRes.json()
-      const seasonsData = await seasonsRes.json()
-      
-      setTeams(teamsData)
-      setUsers(usersData)
-      setSeasons(seasonsData)
-    } catch (error) {
-      console.error('Failed to fetch data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const nflTeams = teams.filter(team => team.league === 'NFL')
-  const collegeTeams = teams.filter(team => team.league === 'COLLEGE')
-  const currentSeason = seasons.find(s => s.status === 'DRAFT' || s.status === 'ACTIVE') || seasons[0]
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
+  const season = await prisma.season.findFirst({
+    where: { poolId: membership.poolId },
+    orderBy: { year: 'desc' },
+    include: {
+      participants: { select: { decisionsSubmittedAt: true } },
+      teamEligibility: { select: { leagueSnapshot: true, status: true } },
+      draftSessions: {
+        where: { status: { not: 'CANCELED' } },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
+    },
+  })
+  const [activeMembers, recentActivity] = await Promise.all([
+    prisma.poolMembership.count({ where: { poolId: membership.poolId, status: 'ACTIVE' } }),
+    prisma.auditEvent.findMany({
+      where: { poolId: membership.poolId },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      include: { actor: { select: { name: true } } },
+    }),
+  ])
+  const submitted = season?.participants.filter((participant) => participant.decisionsSubmittedAt).length ?? 0
+  const unresolvedEligibility = season?.teamEligibility.filter(
+    (entry) => entry.leagueSnapshot === 'COLLEGE' && ['PENDING', 'REVIEW'].includes(entry.status),
+  ).length ?? 0
+  const latestDraft = season?.draftSessions[0] ?? null
+  const stage = !season
+    ? 'SETUP'
+    : season.status === 'ACTIVE' || season.status === 'FINALIZED'
+      ? 'SEASON'
+      : latestDraft
+        ? 'DRAFT'
+        : submitted > 0
+          ? 'KEEPERS'
+          : 'SETUP'
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">The 10s Admin</h1>
-          <p className="text-gray-600">Administrative dashboard for managing your football pool</p>
-          {currentSeason && (
-            <p className="text-sm text-gray-500 mt-2">Current Season: {currentSeason.name}</p>
-          )}
-        </div>
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Participants</p>
-                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+    <main className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <section className="overflow-hidden border-y border-white/10 bg-slate-900 text-slate-100">
+          <div className="grid gap-8 p-6 md:grid-cols-[1.25fr_.75fr] md:p-9">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-300">Commissioner HQ</p>
+              <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">{season?.name ?? 'Build your first season'}</h1>
+              <p className="mt-3 max-w-2xl text-slate-300">
+                {season
+                  ? `${membership.pool.name} has ${activeMembers} active members. Complete the readiness checks below before opening the draft room.`
+                  : 'Create a season to begin assigning seats, reviewing teams, and preparing the draft.'}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link className="rounded-full bg-blue-600 px-6 py-3 font-black text-white" href={season ? `/admin/seasons/${season.id}/setup` : '/admin/seasons'}>{season ? 'Continue season setup' : 'Create season'}</Link>
+                <Link className="rounded-full border border-white/15 bg-white/5 px-6 py-3 font-bold" href="/admin/draft">Open draft controls</Link>
               </div>
             </div>
+            <div className="self-center"><SeasonStageTracker activeStage={stage} /></div>
           </div>
+        </section>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">NFL Teams</p>
-                <p className="text-2xl font-bold text-gray-900">{nflTeams.length}</p>
-              </div>
-            </div>
-          </div>
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard detail="Active pool access" label="Members" value={activeMembers} />
+          <StatCard detail="Keep/Release complete" label="Choices" value={season ? `${submitted}/${season.participants.length}` : '—'} warning={Boolean(season && submitted !== season.participants.length)} />
+          <StatCard detail="College teams requiring action" label="Eligibility" value={unresolvedEligibility} warning={unresolvedEligibility > 0} />
+          <StatCard detail={latestDraft ? `${latestDraft.mode.toLowerCase()} · ${latestDraft.status.toLowerCase()}` : 'Not created yet'} label="Draft" value={latestDraft ? latestDraft.status : 'Pending'} />
+        </section>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">College Teams</p>
-                <p className="text-2xl font-bold text-gray-900">{collegeTeams.length}</p>
-              </div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1.25fr_.75fr]">
+          <section className="border-y border-white/10 bg-slate-900 p-5">
+            <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Next actions</p><h2 className="mt-1 text-xl font-black">Get draft-ready</h2></div><span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">Commissioner</span></div>
+            <div className="mt-5 space-y-3">
+              <ActionRow done={Boolean(season && season.participants.length > 0)} href={season ? `/admin/seasons/${season.id}/setup` : '/admin/seasons'} label="Confirm participants and base draft order" />
+              <ActionRow done={Boolean(season && submitted === season.participants.length && season.participants.length > 0)} href={season ? `/admin/seasons/${season.id}/setup` : '/admin/seasons'} label="Collect every Keep/Release submission" />
+              <ActionRow done={Boolean(season && unresolvedEligibility === 0 && season.teamEligibility.length > 0)} href={season ? `/admin/seasons/${season.id}/eligibility` : '/admin/seasons'} label="Approve the season's FBS team pool" />
+              <ActionRow done={Boolean(latestDraft)} href="/admin/draft" label="Create and run a rehearsal draft" />
             </div>
-          </div>
+          </section>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Seasons</p>
-                <p className="text-2xl font-bold text-gray-900">{seasons.length}</p>
-              </div>
+          <section className="border-y border-white/10 bg-slate-900 p-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Audit trail</p>
+            <h2 className="mt-1 text-xl font-black">Recent activity</h2>
+            <div className="mt-5 space-y-4">
+              {recentActivity.map((event) => (
+                <div className="flex gap-3" key={event.id}>
+                  <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500 ring-4 ring-blue-500/15" />
+                  <div><p className="text-sm font-bold">{friendlyAction(event.action)}</p><p className="text-xs text-slate-500">{event.actor?.name ?? 'System'} · {event.createdAt.toLocaleDateString()}</p></div>
+                </div>
+              ))}
+              {recentActivity.length === 0 && <p className="text-sm text-slate-500">Activity will appear as setup begins.</p>}
             </div>
-          </div>
-        </div>
-
-        {/* Management Tools */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* User Management */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-3">User Management</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">Add, edit, and manage pool participants</p>
-            <a
-              href="/admin/users"
-              className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
-            >
-              Manage Users
-              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
-          </div>
-
-          {/* Draft Selection */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-3">Draft Selection</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">Manage participant picks and draft assignments</p>
-            <a
-              href="/admin/draft"
-              className="inline-flex items-center text-green-600 hover:text-green-700 font-medium"
-            >
-              Manage Draft
-              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
-          </div>
-
-          {/* Team Data */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-3">Team Data</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">View and manage NFL and college team information</p>
-            <a
-              href="/admin/teams"
-              className="inline-flex items-center text-orange-600 hover:text-orange-700 font-medium"
-            >
-              View Teams
-              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
-          </div>
-
-          {/* Season Management */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-3">Season Management</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">Manage seasons and historical data</p>
-            <a
-              href="/admin/seasons"
-              className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium"
-            >
-              Manage Seasons
-              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
-          </div>
-
-          {/* Game Results */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-3">Game Results</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">Track scores and standings</p>
-            <span className="inline-flex items-center text-gray-400 font-medium">
-              Coming Soon
-            </span>
-          </div>
-
-          {/* Reports */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-3">Reports</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">Generate reports and analytics</p>
-            <span className="inline-flex items-center text-gray-400 font-medium">
-              Coming Soon
-            </span>
-          </div>
+          </section>
         </div>
       </div>
-    </div>
+    </main>
   )
+}
+
+function StatCard({ label, value, detail, warning = false }: { label: string; value: string | number; detail: string; warning?: boolean }) {
+  return <div className="border-t border-white/10 bg-slate-900 p-5"><div className="flex items-start justify-between"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p><span className={`h-2.5 w-2.5 rounded-full ${warning ? 'bg-orange-400' : 'bg-blue-500'}`} /></div><p className="mt-3 text-2xl font-black">{value}</p><p className="mt-1 text-xs text-slate-500">{detail}</p></div>
+}
+
+function ActionRow({ done, href, label }: { done: boolean; href: string; label: string }) {
+  return <Link className="flex items-center gap-3 border-b border-white/10 p-4 transition hover:bg-white/5" href={href}><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-black ${done ? 'bg-blue-600 text-white' : 'bg-orange-400/15 text-orange-300'}`}>{done ? '✓' : '→'}</span><span className={`font-bold ${done ? 'text-slate-500 line-through' : ''}`}>{label}</span></Link>
+}
+
+function friendlyAction(action: string) {
+  return action.toLowerCase().replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase())
 }

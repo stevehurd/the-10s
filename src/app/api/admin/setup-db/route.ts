@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { authorizeApi } from '@/lib/auth/authorization'
 
 export async function POST() {
+  const authorization = await authorizeApi('COMMISSIONER')
+  if (!authorization.authorized) return authorization.response
+
   try {
     console.log('Setting up database schema...')
     
@@ -19,13 +23,13 @@ export async function POST() {
         message: 'Database already configured',
         userCount 
       })
-    } catch (error) {
+    } catch {
       // Tables don't exist, need to create them
       console.log('Tables do not exist. Database schema needs to be created.')
       
       return NextResponse.json({
         success: false,
-        message: 'Database schema missing. Please run: npx prisma db push',
+        message: 'Database schema missing. Apply the reviewed migrations with: npm run db:deploy',
         error: 'Tables not found'
       }, { status: 500 })
     }

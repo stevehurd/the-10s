@@ -1,7 +1,19 @@
 import { prisma } from './db'
 
+export interface TeamSyncData {
+  name: string
+  abbreviation: string
+  conference: string | null
+  division: string | null
+  league: 'NFL' | 'COLLEGE'
+  externalId: string | null
+  sportsDataTeamId: string | null
+  sportsDataGlobalTeamId: string | null
+  logoUrl: string | null
+}
+
 // College Football Data API with multiple sources
-export async function fetchCollegeTeams() {
+export async function fetchCollegeTeams(): Promise<TeamSyncData[]> {
   // Try SportsDataIO first (if API key available)
   const sportsDataApiKey = process.env.SPORTSDATA_API_KEY
   if (sportsDataApiKey) {
@@ -19,16 +31,20 @@ export async function fetchCollegeTeams() {
         
         if (teams && Array.isArray(teams) && teams.length > 0) {
           // Filter to only include teams with conference data (FBS teams)
-          const fbsTeams = teams.filter((team: { Conference: string }) => team.Conference)
+          const fbsTeams = teams.filter((team: { Active?: boolean; Conference: string }) =>
+            team.Active !== false && Boolean(team.Conference),
+          )
           console.log(`✅ Filtered to ${fbsTeams.length} FBS teams (with conferences)`)
           
-          return fbsTeams.map((team: { School: string; Name: string; ShortDisplayName?: string; Key: string; Conference: string; GlobalTeamID: number; TeamLogoUrl: string }) => ({
+          return fbsTeams.map((team: { TeamID: number; School: string; Name: string; ShortDisplayName?: string; Key: string; Conference: string; GlobalTeamID: number; TeamLogoUrl: string }) => ({
             name: `${team.School} ${team.Name}`, // Full name: "SMU Mustangs"
             abbreviation: team.ShortDisplayName || team.Key || team.School?.substring(0, 4).toUpperCase(),
             conference: team.Conference,
             division: null,
-            league: 'COLLEGE',
-            externalId: team.GlobalTeamID?.toString(),
+            league: 'COLLEGE' as const,
+            externalId: team.GlobalTeamID?.toString() ?? null,
+            sportsDataTeamId: team.TeamID?.toString() ?? null,
+            sportsDataGlobalTeamId: team.GlobalTeamID?.toString() ?? null,
             logoUrl: team.TeamLogoUrl || null,
           }))
         }
@@ -45,7 +61,7 @@ export async function fetchCollegeTeams() {
 }
 
 // NFL teams from SportsDataIO API
-export async function fetchNFLTeams() {
+export async function fetchNFLTeams(): Promise<TeamSyncData[]> {
   const sportsDataApiKey = process.env.SPORTSDATA_API_KEY
   if (sportsDataApiKey) {
     try {
@@ -61,13 +77,15 @@ export async function fetchNFLTeams() {
         console.log(`✅ SportsDataIO NFL: Found ${teams?.length || 0} teams`)
         
         if (teams && Array.isArray(teams) && teams.length > 0) {
-          return teams.map((team: { FullName: string; Key: string; Conference: string; Division: string; GlobalTeamID: number; PrimaryColor: string; WikipediaLogoURL: string }) => ({
+          return teams.filter((team: { Active?: boolean }) => team.Active !== false).map((team: { TeamID: number; FullName: string; Key: string; Conference: string; Division: string; GlobalTeamID: number; PrimaryColor: string; WikipediaLogoURL: string }) => ({
             name: team.FullName,
             abbreviation: team.Key,
             conference: team.Conference,
             division: team.Division,
-            league: 'NFL',
-            externalId: team.GlobalTeamID?.toString(),
+            league: 'NFL' as const,
+            externalId: team.GlobalTeamID?.toString() ?? null,
+            sportsDataTeamId: team.TeamID?.toString() ?? null,
+            sportsDataGlobalTeamId: team.GlobalTeamID?.toString() ?? null,
             logoUrl: team.WikipediaLogoURL || null,
           }))
         }
@@ -108,8 +126,10 @@ export async function syncTeamsToDatabase() {
           abbreviation: teamData.abbreviation,
           conference: teamData.conference,
           division: teamData.division,
-          externalId: 'externalId' in teamData ? teamData.externalId : null,
-          logoUrl: 'logoUrl' in teamData ? teamData.logoUrl : null
+          externalId: teamData.externalId,
+          sportsDataTeamId: teamData.sportsDataTeamId,
+          sportsDataGlobalTeamId: teamData.sportsDataGlobalTeamId,
+          logoUrl: teamData.logoUrl
         },
         create: teamData
       })
