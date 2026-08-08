@@ -52,17 +52,17 @@ Standings rank by total wins, then the best single NFL team's win total, then th
 
 ## Outstanding data work
 
-### CFB historical standings and scoring parity — release blocker
+### CFB historical standings and scoring parity — production comparison remains
 
-The current SportsDataIO development key does not expose the season-specific CFB `Standings/2025` or `Schedules/2025` endpoints. `LeagueHierarchy` returns 138 active FBS teams with completed aggregate W-L-T records, which is sufficient for realistic keeper and draft rehearsals, but it does not provide a trustworthy regular-season versus postseason split.
+SportsDataIO documents season-specific schedules and separate regular/postseason standings. The application now calculates college records from final games returned by `Schedules/{season}` and rejects a payload containing another season, duplicate games, invalid final scores, or an implausible FBS catalog. It counts SeasonType 1 regular-season games (including conference championships when classified there) and SeasonType 3 bowls/College Football Playoff games. Ties are recorded without counting as wins. The unversioned `LeagueHierarchy` record is no longer used by production standings synchronization.
+
+The current development subscription may not expose `Schedules/2025`. `LeagueHierarchy` aggregate records remain acceptable only for local draft rehearsals and are explicitly stored without a claimed regular/postseason split.
 
 Before production standings synchronization is approved:
 
-- Confirm the SportsDataIO product/feed that provides season-specific CFB results for the required historical and active seasons, or derive records from finalized game results.
-- Count regular-season games, conference championships, bowls, and College Football Playoff games; record ties without counting them as wins.
-- Verify the feed's season identifier so a current hierarchy response can never be written into the wrong season.
-- Create fixture-based regression cases for both regular and postseason CFB results and compare the calculated 2025 totals with the preserved production totals.
-- Store aggregate and regular/postseason fields accurately in `TeamSeasonRecord`, including source and source-update timestamps.
+- Confirm the production SportsDataIO subscription includes `Schedules/{season}` for active and required historical seasons.
+- Compare the game-derived 2025 totals with the preserved production totals after a read-only production export is explicitly approved.
+- Investigate and document every mismatch before approving production synchronization.
 - Keep finalized seasons immutable unless a commissioner explicitly reopens them through an audited workflow.
 
-Until these checks pass, SportsDataIO-backed local rehearsal data must be described as aggregate prior-season records, not as a fully characterized production CFB scoring feed.
+Until the production comparison passes, SportsDataIO-backed local rehearsal data must still be described as aggregate prior-season records rather than production-approved CFB scoring data.

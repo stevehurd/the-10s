@@ -1,3 +1,9 @@
+import {
+  calculateCollegeStandingsFromGames,
+  type CombinedStanding,
+  type CollegeStandingTeam,
+} from './standings-calculation.ts'
+
 // SportsData.IO API integration
 const SPORTSDATA_API_KEY = process.env.SPORTSDATA_API_KEY
 const BASE_URL = 'https://api.sportsdata.io/v3'
@@ -15,9 +21,12 @@ export interface SportsDataGame {
   DateTime: string
   AwayTeam: string
   HomeTeam: string
-  AwayScore: number | null
-  HomeScore: number | null
-  Winner: string | null
+  AwayScore?: number | null
+  HomeScore?: number | null
+  AwayTeamScore?: number | null
+  HomeTeamScore?: number | null
+  Winner?: string | null
+  Title?: string | null
   GameEndDateTime: string | null
   AwayTeamID: number
   HomeTeamID: number
@@ -118,95 +127,52 @@ export async function fetchNFLPostseasonStandings(season: number = 2025): Promis
 }
 
 // College Football League Hierarchy API calls (includes standings data)
-export async function fetchCollegeStandings(season: number = 2025): Promise<SportsDataStanding[]> {
+export async function fetchCollegeStandings(season: number = 2025): Promise<CombinedStanding[]> {
   if (!SPORTSDATA_API_KEY) {
     throw new Error('SportsData.IO API key not configured')
   }
 
-  console.log('Fetching college standings from SportsData.IO...')
-
-  // For 2025, use the LeagueHierarchy endpoint to get current data
-  const response = await fetch(
-    `${BASE_URL}/cfb/scores/json/LeagueHierarchy`,
-    {
-      headers: {
-        'Ocp-Apim-Subscription-Key': SPORTSDATA_API_KEY,
-        'Accept': 'application/json'
-      }
-    }
-  )
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch college standings: ${response.status} ${response.statusText}`)
+  console.log(`Fetching college ${season} schedule and current FBS hierarchy from SportsDataIO...`)
+  const [conferences, games] = await Promise.all([
+    fetchSportsDataJson<Array<{ Teams?: CollegeStandingTeam[] }>>('/cfb/scores/json/LeagueHierarchy', 'college hierarchy'),
+    fetchSportsDataJson<SportsDataGame[]>(`/cfb/scores/json/Schedules/${season}`, `college ${season} schedule`),
+  ])
+  const teams = conferences.flatMap((conference) => conference.Teams ?? []).filter((team) => team.Active !== false)
+  if (teams.length < 120 || teams.length > 160) {
+    throw new Error(`SportsDataIO returned an implausible active FBS field (${teams.length} teams); no standings were changed`)
   }
-
-  const conferences = await response.json()
-
-  // Flatten all teams from all conferences into a single array
-  const teams: SportsDataStanding[] = []
-  for (const conference of conferences) {
-    for (const team of conference.Teams) {
-      teams.push({
-        Season: season,
-        SeasonType: 1, // Regular season
-        TeamID: team.TeamID,
-        Key: team.Key,
-        Name: team.Name,
-        Team: `${team.School} ${team.Name}`,
-        Wins: team.Wins || 0,
-        Losses: team.Losses || 0,
-        Ties: team.Ties || 0,
-        ConferenceWins: team.ConferenceWins || 0,
-        ConferenceLosses: team.ConferenceLosses || 0,
-        GlobalTeamID: team.GlobalTeamID,
-        ConferenceRank: team.ApRank,
-        DivisionRank: team.CoachesRank
-      })
-    }
+  if (games.length < 500 || games.length > 2000) {
+    throw new Error(`SportsDataIO returned an implausible ${season} college schedule (${games.length} games); no standings were changed`)
   }
-
-  return teams
+  return calculateCollegeStandingsFromGames(season, teams, games)
 }
 
-// College Football Postseason Standings (Playoff & Bowl Games)
-export async function fetchCollegePostseasonStandings(season: number = 2025): Promise<SportsDataStanding[]> {
-  if (!SPORTSDATA_API_KEY) {
-    throw new Error('SportsData.IO API key not configured')
-  }
-
-  const url = `${BASE_URL}/cfb/scores/json/Standings/${season}POST`
-
-  console.log('Fetching college postseason standings from:', url)
-
-  const response = await fetch(url, {
+async function fetchSportsDataJson<T>(path: string, label: string): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
     headers: {
-      'Ocp-Apim-Subscription-Key': SPORTSDATA_API_KEY,
-      'Accept': 'application/json'
-    }
+      'Ocp-Apim-Subscription-Key': SPORTSDATA_API_KEY!,
+      'Accept': 'application/json',
+    },
   })
-
   if (!response.ok) {
-    // If postseason hasn't started yet, the API might return 404
-    if (response.status === 404) {
-      console.log('College postseason standings not available yet (404)')
-      return []
-    }
-    throw new Error(`Failed to fetch college postseason standings: ${response.status} ${response.statusText}`)
+    const entitlement = response.status === 401 || response.status === 403
+      ? ' The configured SportsDataIO subscription may not include this feed.'
+      : ''
+    throw new Error(`Failed to fetch ${label}: ${response.status} ${response.statusText}.${entitlement}`)
   }
-
-  const standings = await response.json()
-
-  return standings
+  return response.json() as Promise<T>
 }
 
 // Helper function to determine game winner
 export function determineWinner(game: SportsDataGame): string | null {
-  if (!game.HomeScore || !game.AwayScore) return null
-  if (game.Status !== 'Final') return null
+  const homeScore = game.HomeTeamScore ?? game.HomeScore
+  const awayScore = game.AwayTeamScore ?? game.AwayScore
+  if (homeScore == null || awayScore == null) return null
+  if (!['Final', 'F/OT', 'Forfeit'].includes(game.Status)) return null
   
-  if (game.HomeScore > game.AwayScore) {
+  if (homeScore > awayScore) {
     return game.HomeTeam
-  } else if (game.AwayScore > game.HomeScore) {
+  } else if (awayScore > homeScore) {
     return game.AwayTeam
   }
   
@@ -224,6 +190,7 @@ export function mapGameStatus(sportsDataStatus: string): string {
       return 'IN_PROGRESS'
     case 'Final':
     case 'F/OT':
+    case 'Forfeit':
       return 'COMPLETED'
     default:
       return 'SCHEDULED'

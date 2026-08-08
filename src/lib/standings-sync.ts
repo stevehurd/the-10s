@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db'
 import {
-  fetchCollegePostseasonStandings,
   fetchCollegeStandings,
   fetchNFLPostseasonStandings,
   fetchNFLStandings,
@@ -10,25 +9,28 @@ import {
   type CombinedStanding,
 } from '@/lib/standings-calculation'
 
-async function syncStanding(
+async function syncStandings(
   seasonId: string,
-  standing: CombinedStanding,
+  standings: CombinedStanding[],
   league: 'NFL' | 'COLLEGE',
 ) {
-  const team = await prisma.team.findFirst({
-    where: {
-      league,
-      OR: [
-        { sportsDataTeamId: standing.TeamID.toString() },
-        { abbreviation: standing.Key },
-        { name: standing.Name },
-        { name: standing.Team },
-        // Legacy data stored one SportsData identifier in external_id.
-        { externalId: standing.TeamID.toString() },
-      ],
-    },
-  })
-  if (!team) throw new Error(`Team not found: ${standing.Team} (${standing.Key})`)
+  const mapped = await Promise.all(standings.map(async (standing) => {
+    const team = await prisma.team.findFirst({
+      where: {
+        league,
+        OR: [
+          { sportsDataTeamId: standing.TeamID.toString() },
+          { abbreviation: standing.Key },
+          { name: standing.Name },
+          { name: standing.Team },
+          // Legacy data stored one SportsData identifier in external_id.
+          { externalId: standing.TeamID.toString() },
+        ],
+      },
+    })
+    if (!team) throw new Error(`Team not found: ${standing.Team} (${standing.Key})`)
+    return { standing, team }
+  }))
 
   await prisma.$transaction(async (tx) => {
     const season = await tx.season.findUnique({
@@ -38,39 +40,44 @@ async function syncStanding(
     if (!season) throw new Error('Season not found')
     if (season.finalizedAt) throw new Error('Completed season standings are frozen')
 
-    await tx.teamSeasonRecord.upsert({
-      where: { seasonId_teamId: { seasonId, teamId: team.id } },
-      update: {
-        wins: standing.Wins,
-        losses: standing.Losses,
-        ties: standing.Ties ?? 0,
-        regularWins: standing.regularWins,
-        regularLosses: standing.regularLosses,
-        postseasonWins: standing.postseasonWins,
-        postseasonLosses: standing.postseasonLosses,
-        sourceUpdatedAt: new Date(),
-      },
-      create: {
-        seasonId,
-        teamId: team.id,
-        wins: standing.Wins,
-        losses: standing.Losses,
-        ties: standing.Ties ?? 0,
-        regularWins: standing.regularWins,
-        regularLosses: standing.regularLosses,
-        postseasonWins: standing.postseasonWins,
-        postseasonLosses: standing.postseasonLosses,
-        source: 'SPORTSDATAIO',
-        sourceUpdatedAt: new Date(),
-      },
-    })
-    if (season.status === 'ACTIVE') {
-      await tx.team.update({
-        where: { id: team.id },
-        data: { wins: standing.Wins, losses: standing.Losses, ties: standing.Ties ?? 0 },
+    const source = league === 'COLLEGE' ? 'SPORTSDATAIO_SCHEDULE' : 'SPORTSDATAIO_STANDINGS'
+    const sourceUpdatedAt = new Date()
+    for (const { standing, team } of mapped) {
+      await tx.teamSeasonRecord.upsert({
+        where: { seasonId_teamId: { seasonId, teamId: team.id } },
+        update: {
+          wins: standing.Wins,
+          losses: standing.Losses,
+          ties: standing.Ties ?? 0,
+          regularWins: standing.regularWins,
+          regularLosses: standing.regularLosses,
+          postseasonWins: standing.postseasonWins,
+          postseasonLosses: standing.postseasonLosses,
+          source,
+          sourceUpdatedAt,
+        },
+        create: {
+          seasonId,
+          teamId: team.id,
+          wins: standing.Wins,
+          losses: standing.Losses,
+          ties: standing.Ties ?? 0,
+          regularWins: standing.regularWins,
+          regularLosses: standing.regularLosses,
+          postseasonWins: standing.postseasonWins,
+          postseasonLosses: standing.postseasonLosses,
+          source,
+          sourceUpdatedAt,
+        },
       })
+      if (season.status === 'ACTIVE') {
+        await tx.team.update({
+          where: { id: team.id },
+          data: { wins: standing.Wins, losses: standing.Losses, ties: standing.Ties ?? 0 },
+        })
+      }
     }
-  })
+  }, { timeout: 30_000 })
 }
 
 export async function syncSeasonStandings(
@@ -92,14 +99,8 @@ export async function syncSeasonStandings(
         fetchNFLPostseasonStandings(season.year),
       ])
       const combined = combineRegularAndPostseasonStandings(regular, postseason)
-      for (const standing of combined) {
-        try {
-          await syncStanding(season.id, standing, 'NFL')
-          updatedTeams += 1
-        } catch (error) {
-          errors.push(error instanceof Error ? error.message : String(error))
-        }
-      }
+      await syncStandings(season.id, combined, 'NFL')
+      updatedTeams += combined.length
       results.push(`NFL: ${combined.length} records (${postseason.length} postseason records)`)
     } catch (error) {
       errors.push(`NFL feed: ${error instanceof Error ? error.message : String(error)}`)
@@ -108,20 +109,11 @@ export async function syncSeasonStandings(
 
   if (league === 'COLLEGE' || league === 'BOTH') {
     try {
-      const [regular, postseason] = await Promise.all([
-        fetchCollegeStandings(season.year),
-        fetchCollegePostseasonStandings(season.year),
-      ])
-      const combined = combineRegularAndPostseasonStandings(regular, postseason)
-      for (const standing of combined) {
-        try {
-          await syncStanding(season.id, standing, 'COLLEGE')
-          updatedTeams += 1
-        } catch (error) {
-          errors.push(error instanceof Error ? error.message : String(error))
-        }
-      }
-      results.push(`College: ${combined.length} records (${postseason.length} postseason records)`)
+      const calculated = await fetchCollegeStandings(season.year)
+      await syncStandings(season.id, calculated, 'COLLEGE')
+      updatedTeams += calculated.length
+      const postseasonTeams = calculated.filter((standing) => standing.postseasonWins + standing.postseasonLosses + standing.postseasonTies > 0).length
+      results.push(`College: ${calculated.length} game-derived records (${postseasonTeams} teams with postseason results)`)
     } catch (error) {
       errors.push(`College feed: ${error instanceof Error ? error.message : String(error)}`)
     }
