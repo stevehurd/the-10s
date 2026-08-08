@@ -42,6 +42,10 @@
 - Every completed roster has exactly 2 NFL and 8 college teams.
 - Rehearsal activity can never mutate an official draft or roster.
 
+## Draft Test Lab
+
+The commissioner-only test lab is restricted to the synthetic development pool and harness-named rehearsal sessions. It runs database-backed checks for competing player/commissioner picks, pause and resume, expired-clock autopick, reconnect state reconstruction, undo, full 15-seat completion, final 2-NFL/8-college quotas, and official-roster fingerprint isolation.
+
 ## Standings tiebreaker
 
 Standings rank by total wins, then the best single NFL team's win total, then the best single college team's win total. An exact tie after those competitive criteria uses player name only for deterministic display until a commissioner records the final order.

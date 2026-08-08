@@ -53,7 +53,9 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
   const officialSession = season?.sessions.find(
     (session) => session.mode === 'OFFICIAL' && session.status !== 'CANCELED',
   ) ?? null
-  const demoSessions = season?.sessions.filter((session) => session.mode === 'REHEARSAL') ?? []
+  const demoSessions = season?.sessions.filter(
+    (session) => session.mode === 'REHEARSAL' && !session.name.startsWith('Harness run'),
+  ) ?? []
 
   const ready = Boolean(
     season &&
@@ -284,6 +286,9 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
               <p className="mt-1 text-sm text-slate-600">Practice the complete draft flow using this season’s real order, keepers, team pool, clock, and autopick rules. Demo picks never affect official rosters.</p>
             </div>
             <div className="flex flex-wrap items-end gap-3">
+              <Link className="rounded-full border border-orange-500/40 px-4 py-2 text-sm font-semibold text-orange-600" href="/admin/draft/harness">
+                Open Draft Test Lab
+              </Link>
               <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Demo pick clock<input className="mt-1 block w-36 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" max={900} min={10} type="number" value={demoPickSeconds} onChange={(event) => setDemoPickSeconds(Number(event.target.value))} /></label>
               <button className="rounded-full border border-slate-400 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-50" disabled={!ready || busy !== null} onClick={() => createSession('REHEARSAL')}>
                 {busy === 'create-REHEARSAL' ? 'Creating…' : 'Create demo draft'}
