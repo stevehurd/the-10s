@@ -5,6 +5,7 @@ import KeeperStatusCallout from '@/components/keeper-status-callout'
 import TeamMark from '@/components/team-mark'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
+import { playerDisplayName } from '@/lib/player-settings-rules'
 import { compareStandings } from '@/lib/standings-ranking'
 
 export const dynamic = 'force-dynamic'
@@ -60,6 +61,7 @@ export default async function Home({
       where: { seasonId: selectedSeason.id },
       include: {
         user: { select: { id: true, name: true } },
+        poolSeat: { select: { label: true } },
         rosterSlots: { include: { team: true }, orderBy: { number: 'asc' } },
       },
     }),
@@ -137,7 +139,7 @@ export default async function Home({
     )
     .map((participant) => ({
       id: participant.id,
-      name: participant.user.name,
+      name: playerDisplayName(participant.user.name, participant.poolSeat.label),
       isViewer: participant.userId === context.appUser.id,
       submitted: Boolean(participant.decisionsSubmittedAt),
       keptTeams: participant.rosterSlots
@@ -171,6 +173,9 @@ export default async function Home({
                 Commissioner
               </Link>
             ) : null}
+            <Link className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/5" href="/settings">
+              Settings
+            </Link>
             <form action="/auth/signout" method="post">
               <button className="rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-white" type="submit">Sign out</button>
             </form>
@@ -267,7 +272,7 @@ export default async function Home({
           <section className="mb-7 overflow-hidden rounded-3xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-white/5 to-emerald-300/10 p-7 text-center">
             <p className="text-5xl">🏆</p>
             <p className="mt-3 text-xs font-bold uppercase tracking-[0.24em] text-amber-300">{selectedSeason.year} champion</p>
-            <h3 className="mt-2 text-4xl font-black">{champion.user.name}</h3>
+            <h3 className="mt-2 text-4xl font-black">{playerDisplayName(champion.user.name, champion.poolSeat.label)}</h3>
             <p className="mt-2 text-lg text-slate-300">{champion.totalWins} wins</p>
           </section>
         ) : isInSeason ? (
@@ -361,7 +366,7 @@ export default async function Home({
                   <div className="grid grid-cols-[44px_1fr_auto] items-center gap-3">
                     <span className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-black ${index === 0 ? 'bg-amber-300 text-amber-950' : 'bg-white/5 text-slate-300'}`}>{index + 1}</span>
                     <div className="min-w-0">
-                      <p className="truncate text-lg font-bold">{participant.user.name}{isViewer ? ' · You' : ''}</p>
+                      <p className="truncate text-lg font-bold">{playerDisplayName(participant.user.name, participant.poolSeat.label)}{isViewer ? ' · You' : ''}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-4xl font-black leading-none tabular-nums text-emerald-300">{participant.totalWins}</p>

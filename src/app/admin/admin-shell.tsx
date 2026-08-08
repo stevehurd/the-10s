@@ -18,7 +18,7 @@ export default function AdminShell({ children, commissionerName }: { children: R
   return (
     <div className="admin-shell min-h-screen bg-slate-950 text-slate-100">
       <ProductHeader
-        action={<Link className="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-500" href="/">Member view</Link>}
+        action={<div className="flex items-center gap-2"><Link className="rounded-full px-3 py-2 text-sm font-bold text-slate-300 hover:bg-white/5" href="/settings">Settings</Link><Link className="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-500" href="/">Member view</Link></div>}
         context={`${commissionerName} · Commissioner`}
         nav={nav.map((item) => ({
           ...item,

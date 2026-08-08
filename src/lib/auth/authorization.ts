@@ -48,6 +48,41 @@ export async function getCurrentAppUser() {
   }
 
   if (!appUser) return null
+
+  // Supabase owns sign-in identity. Once a verified email change completes,
+  // mirror the confirmed address into the application profile.
+  const confirmedEmail = authUser.email?.trim().toLowerCase()
+  if (confirmedEmail && appUser.email?.trim().toLowerCase() !== confirmedEmail) {
+    const collision = await prisma.user.findFirst({
+      where: {
+        email: { equals: confirmedEmail, mode: 'insensitive' },
+        id: { not: appUser.id },
+      },
+      select: { id: true },
+    })
+    if (!collision) {
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({ where: { id: appUser!.id }, data: { email: confirmedEmail } })
+        for (const membership of appUser!.memberships) {
+          await tx.auditEvent.create({
+            data: {
+              poolId: membership.poolId,
+              actorUserId: appUser!.id,
+              action: 'PLAYER_EMAIL_CONFIRMED',
+              entityType: 'User',
+              entityId: appUser!.id,
+            },
+          })
+        }
+      })
+      appUser = await prisma.user.findUnique({
+        where: { authUserId: authUser.id },
+        include: includeMemberships,
+      })
+    }
+  }
+
+  if (!appUser) return null
   return { authUser, appUser }
 }
 
