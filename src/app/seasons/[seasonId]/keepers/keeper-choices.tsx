@@ -170,7 +170,8 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
         </section>
 
         {participant.decisionsSubmittedAt ? (
-          <div className="mb-5 rounded-xl border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-emerald-100">
+          <div className="mb-5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-slate-300">
+            <span className="mr-2 font-black text-blue-300">✓</span>
             Choices submitted. You may still revise them until the draft starts.
           </div>
         ) : null}
@@ -191,7 +192,7 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <h2 className="truncate text-lg font-semibold">{team.name}</h2>
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${team.league === 'NFL' ? 'bg-blue-400/15 text-blue-200' : 'bg-orange-400/15 text-orange-200'}`}>
+                          <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-400">
                             {team.league === 'NFL' ? 'NFL' : 'College'}
                           </span>
                         </div>
@@ -219,7 +220,7 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
                       Keep
                     </button>
                     <button
-                      className={`rounded-xl border px-4 py-2.5 font-semibold transition ${slot.retentionChoice === 'RELEASE' ? 'border-amber-300 bg-amber-300 text-amber-950' : 'border-white/10 bg-slate-900 text-slate-300 hover:border-amber-300/50'}`}
+                      className={`rounded-xl border px-4 py-2.5 font-semibold transition ${slot.retentionChoice === 'RELEASE' ? 'border-slate-200 bg-slate-200 text-slate-950' : 'border-white/10 bg-slate-900 text-slate-300 hover:border-slate-400'}`}
                       disabled={busy || Boolean(participant.decisionsLockedAt)}
                       onClick={() => void choose(slot.id, 'RELEASE')}
                       type="button"
@@ -263,9 +264,9 @@ function Requirement({
 }) {
   const complete = overridden || (inverse ? current === required : current >= required)
   return (
-    <div className={`rounded-2xl border px-4 py-3 ${complete ? 'border-emerald-300/30 bg-emerald-300/10' : 'border-white/10 bg-white/5'}`}>
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
       <p className="text-xs uppercase tracking-wider text-slate-400">{label}</p>
-      <p className={`mt-1 text-xl font-black ${complete ? 'text-emerald-300' : 'text-white'}`}>
+      <p className={`mt-1 text-xl font-black ${complete ? 'text-slate-100' : 'text-white'}`}>
         {overridden ? 'Overridden' : inverse ? current : `${current} / ${required}`}
       </p>
     </div>

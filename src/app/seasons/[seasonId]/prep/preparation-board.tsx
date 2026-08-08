@@ -88,9 +88,9 @@ export default function PreparationBoard({ seasonId, teams }: { seasonId: string
 
       <section className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {displayed.map((team) => (
-          <article className={`rounded-2xl border p-4 ${team.available ? 'border-white/10 bg-white/5' : 'border-amber-300/20 bg-amber-300/5 opacity-75'}`} key={team.id}>
+          <article className={`rounded-2xl border p-4 ${team.available ? 'border-white/10 bg-white/5' : 'border-white/10 bg-white/5 opacity-60'}`} key={team.id}>
             <div className="flex items-start gap-3">
-              <button aria-label={`${shortlist.has(team.id) ? 'Remove' : 'Add'} ${team.name} ${shortlist.has(team.id) ? 'from' : 'to'} shortlist`} className={`text-2xl ${shortlist.has(team.id) ? 'text-amber-300' : 'text-slate-600 hover:text-amber-200'}`} onClick={() => toggleShortlist(team.id)} type="button">★</button>
+              <button aria-label={`${shortlist.has(team.id) ? 'Remove' : 'Add'} ${team.name} ${shortlist.has(team.id) ? 'from' : 'to'} shortlist`} className={`text-2xl ${shortlist.has(team.id) ? 'text-blue-300' : 'text-slate-600 hover:text-blue-200'}`} onClick={() => toggleShortlist(team.id)} type="button">★</button>
               <TeamMark abbreviation={team.abbreviation} logoUrl={team.logoUrl} size="lg" />
               <div className="min-w-0 flex-1"><h2 className="truncate font-bold">{team.name}</h2><p className="text-xs text-slate-500">{team.league === 'NFL' ? 'NFL' : 'College'} · {team.conference ?? team.division ?? team.abbreviation}</p></div>
               <div className="text-right"><p className="text-xl font-black text-blue-300">{team.wins}-{team.losses}{team.ties ? `-${team.ties}` : ''}</p><p className="text-[10px] uppercase tracking-wider text-slate-500">Prior W-L-T</p></div>
