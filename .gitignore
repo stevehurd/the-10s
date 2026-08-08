@@ -51,5 +51,6 @@ dev.db
 # backups
 backups/
 *.sql
+!/prisma/migrations/**/migration.sql
 database_backup_*.sql
 .env*.local

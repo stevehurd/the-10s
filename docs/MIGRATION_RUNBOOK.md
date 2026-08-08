@@ -44,6 +44,10 @@ Record every restored-copy rehearsal with:
 
 ## Migration history baseline
 
+Run `npm run migration:check` before every rehearsal or deployment. It verifies that each migration is committed, ordered, non-empty, unchanged from its reviewed SHA-256 manifest entry, and free of unmarked destructive statements. Database backup SQL remains ignored; only `prisma/migrations/**/migration.sql` is allowed through the repository ignore rules.
+
+Use `npm run migration:inspect` only with an explicitly selected credential source. It performs read-only information-schema and `_prisma_migrations` queries and prints migration names/status without printing connection values.
+
 The 2025 database was created with `prisma db push` and has no reliable Prisma migration history. The migration directory therefore contains:
 
 1. `20250801000000_legacy_baseline`: the original schema for fresh databases.

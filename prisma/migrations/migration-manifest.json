@@ -1,0 +1,17 @@
+{
+  "provider": "postgresql",
+  "migrations": [
+    {
+      "id": "20250801000000_legacy_baseline",
+      "sha256": "bf94c11cf34147214b93627a5d4b2624fd133459460424d6e1789011abbb46a1"
+    },
+    {
+      "id": "20260807000000_expansion_foundation",
+      "sha256": "05146c1a68e53c79bd285b90fd383f167f4f74ec8ad8556a5d2a42c019a40504"
+    },
+    {
+      "id": "20260807010000_draft_logistics",
+      "sha256": "690099ebb9c00ea1740bd79ed6ad64f6aaa0851b8dd78be544ce846dedd89a61"
+    }
+  ]
+}
