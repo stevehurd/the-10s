@@ -34,14 +34,14 @@ export default function CreateNextSeason({ seasons }: { seasons: SeasonOption[] 
     router.refresh()
   }
 
-  if (!open) return <button className="rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white disabled:opacity-50" disabled={seasons.length === 0} onClick={() => setOpen(true)}>Create next season</button>
+  if (!open) return <button className="rounded-xl bg-blue-600 px-5 py-3 font-semibold disabled:opacity-50" disabled={seasons.length === 0} onClick={() => setOpen(true)}>Create next season</button>
 
   return (
-    <form className="grid gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 md:grid-cols-[1.4fr_140px_1fr_auto] md:items-end" onSubmit={submit}>
+    <form className="grid gap-4 rounded-2xl border border-white/10 bg-slate-900 p-5 md:grid-cols-[1.4fr_140px_1fr_auto] md:items-end" onSubmit={submit}>
       <Field label="Copy previous season"><select className="w-full rounded-lg border border-slate-300 bg-slate-900 px-3 py-2" value={previousSeasonId} onChange={(event) => { const next = seasons.find((season) => season.id === event.target.value); setPreviousSeasonId(event.target.value); if (next) { setYear(next.year + 1); setName(`${next.year + 1} Season`) } }}>{seasons.map((season) => <option key={season.id} value={season.id}>{season.poolName} — {season.name}</option>)}</select></Field>
       <Field label="Year"><input className="w-full rounded-lg border border-slate-300 px-3 py-2" min={selected ? selected.year + 1 : 2000} onChange={(event) => setYear(Number(event.target.value))} type="number" value={year} /></Field>
       <Field label="Season name"><input className="w-full rounded-lg border border-slate-300 px-3 py-2" onChange={(event) => setName(event.target.value)} value={name} /></Field>
-      <button className="rounded-lg bg-blue-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50" disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+      <button className="rounded-xl bg-blue-600 px-5 py-2.5 font-semibold disabled:opacity-50" disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
       {error && <p className="text-sm text-red-700 md:col-span-4">{error}</p>}
     </form>
   )

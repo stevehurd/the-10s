@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+
+import AdminPageHeader from '@/components/admin-page-header'
 import { useMemo, useState } from 'react'
 
 import { normalizeMeetingUrl } from '@/lib/draft/logistics'
@@ -145,16 +147,10 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-8">
       <div className="mx-auto max-w-5xl space-y-6">
-        <div>
-          <Link href="/admin" className="text-sm font-medium text-blue-700 hover:underline">
-            ← Admin
-          </Link>
-          <h1 className="mt-3 text-3xl font-bold">Set up the draft</h1>
-          <p className="mt-2 max-w-2xl text-slate-600">
-            Schedule the upcoming official draft, confirm the league is ready, and open the room
-            when it is time to begin.
-          </p>
-        </div>
+        <AdminPageHeader
+          description="Schedule the official draft, confirm readiness, and safely rehearse the full experience."
+          title="Draft management"
+        />
 
         <section className="rounded-2xl border border-white/10 bg-slate-900 p-4 sm:p-5">
           <label className="block max-w-xl text-sm font-semibold">
@@ -173,8 +169,8 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
           </label>
         </section>
 
-        <section className="overflow-hidden rounded-2xl border border-blue-500/25 bg-slate-900">
-          <div className="border-b border-blue-500/20 bg-blue-500/10 px-5 py-5 sm:px-6">
+        <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+          <div className="border-b border-white/10 px-5 py-5 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Official draft</p>
@@ -192,7 +188,8 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
                   <h3 className="font-bold">1. Confirm draft readiness</h3>
                   <p className="mt-1 text-sm text-slate-600">Every item must be ready before a draft can be created.</p>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${ready ? 'bg-blue-500/15 text-blue-300' : 'bg-orange-400/15 text-orange-300'}`}>
+                <span className={`inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-slate-300`}>
+                  <span className={`h-2 w-2 rounded-full ${ready ? 'bg-blue-500' : 'bg-amber-300'}`} />
                   {ready ? 'Ready to draft' : 'Action needed'}
                 </span>
               </div>
@@ -266,7 +263,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
                   </div>
                 </div>
               ) : (
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-white/5 p-4">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
                   <p className="text-sm text-slate-600">Create the official draft after the league is ready.</p>
                   <button className="rounded-lg bg-blue-700 px-5 py-2.5 font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={!ready || busy !== null} onClick={() => createSession('OFFICIAL')}>
                     {busy === 'create-OFFICIAL' ? 'Creating…' : 'Create official draft'}
@@ -278,7 +275,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
           </div>
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
+        <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Commissioner testing</p>
@@ -308,11 +305,11 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
                     {session.status === 'LIVE' ? <ActionButton disabled={busy !== null} onClick={() => control(session.id, 'PAUSE')}>Pause</ActionButton> : null}
                     {session.status === 'PAUSED' ? <ActionButton disabled={busy !== null} onClick={() => control(session.id, 'RESUME')}>Resume</ActionButton> : null}
                     {session.status !== 'COMPLETED' && session.turnCount - session.selectionCount > 1 ? (
-                      <button className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-800 disabled:opacity-50" disabled={busy !== null} onClick={() => fastForwardDemo(session)}>
+                      <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled={busy !== null} onClick={() => fastForwardDemo(session)}>
                         {busy === `${session.id}-fast-forward` ? 'Fast-forwarding…' : 'Jump to final pick'}
                       </button>
                     ) : null}
-                    {(session.status === 'PAUSED' || session.status === 'COMPLETED') && session.selectionCount > 0 ? <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50" disabled={busy !== null} onClick={() => undoLastPick(session)}>Undo last pick</button> : null}
+                    {(session.status === 'PAUSED' || session.status === 'COMPLETED') && session.selectionCount > 0 ? <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled={busy !== null} onClick={() => undoLastPick(session)}>Undo last pick</button> : null}
                     {session.status !== 'LIVE' ? (
                       <button
                         className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
@@ -393,9 +390,9 @@ function ScheduleEditor({ session }: { session: SessionSummary }) {
 
 function Readiness({ label, value, ok }: { label: string; value: string; ok: boolean }) {
   return (
-    <div className={`border px-4 py-3 ${ok ? 'border-blue-500/25 bg-blue-500/10' : 'border-orange-400/25 bg-orange-400/10'}`}>
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-600">{label}</p>
-      <p className="mt-1 text-xl font-bold">{value}</p>
+    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+      <div className="flex items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p><span className={`h-2 w-2 rounded-full ${ok ? 'bg-blue-500' : 'bg-amber-300'}`} /></div>
+      <p className="mt-2 text-xl font-bold">{value}</p>
     </div>
   )
 }

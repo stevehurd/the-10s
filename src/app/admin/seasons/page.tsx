@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
+import AdminPageHeader from '@/components/admin-page-header'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
 
@@ -26,11 +27,10 @@ export default async function SeasonsAdminPage() {
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div>
-          <Link href="/admin" className="text-sm font-semibold text-blue-700 hover:underline">← Admin</Link>
-          <h1 className="mt-3 text-3xl font-bold">Season management</h1>
-          <p className="mt-2 text-slate-600">Create the next season, prepare participants, and confirm draft readiness.</p>
-        </div>
+        <AdminPageHeader
+          description="Create the next season, then manage participants, eligibility, and readiness from one place."
+          title="Seasons"
+        />
 
         <CreateNextSeason seasons={seasons.map((season) => ({ id: season.id, year: season.year, name: season.name, poolName: season.pool?.name ?? 'Pool' }))} />
 
@@ -47,7 +47,7 @@ export default async function SeasonsAdminPage() {
                     <p className="text-xs font-bold uppercase tracking-wider text-blue-700">{season.pool?.name}</p>
                     <h2 className="mt-1 text-xl font-bold">{season.name}</h2>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold">{season.status}</span>
+                  <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-slate-300">{friendlyStatus(season.status)}</span>
                 </div>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   <Metric label="Participants" value={season._count.participants} />
@@ -55,11 +55,11 @@ export default async function SeasonsAdminPage() {
                   <Metric label="Reviews" value={eligibilityRemaining} />
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <Link className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white" href={`/admin/seasons/${season.id}/setup`}>Open setup</Link>
-                  <Link className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold" href={`/admin/seasons/${season.id}/eligibility`}>Eligibility</Link>
-                  <Link className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold" href="/admin/draft">Drafts</Link>
+                  <Link className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold" href={`/admin/seasons/${season.id}/setup`}>Manage season</Link>
+                  <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold" href={`/admin/seasons/${season.id}/eligibility`}>Eligibility</Link>
+                  <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold" href="/admin/draft">Draft</Link>
                   {(season.status === 'ACTIVE' || season.status === 'FINALIZED') ? (
-                    <Link className="rounded-lg border border-orange-500/40 px-4 py-2 text-sm font-semibold text-orange-600" href={`/admin/seasons/${season.id}/finalize`}>
+                    <Link className="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 underline decoration-slate-600 underline-offset-4" href={`/admin/seasons/${season.id}/finalize`}>
                       {season.status === 'FINALIZED' ? 'Review final results' : 'Close season'}
                     </Link>
                   ) : null}
@@ -72,6 +72,10 @@ export default async function SeasonsAdminPage() {
       </div>
     </main>
   )
+}
+
+function friendlyStatus(status: string) {
+  return status.toLowerCase().replace(/^./, (letter) => letter.toUpperCase())
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {
