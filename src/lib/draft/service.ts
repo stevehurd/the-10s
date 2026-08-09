@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 
 import { prisma } from '@/lib/db'
+import { serverDraftDeadline } from './clock'
 import {
   canSelectLeague,
   generateDraftTurns,
@@ -357,7 +358,7 @@ export async function startDraftSession(sessionId: string, actorUserId: string) 
   // Arm the clock after the main transaction commits. Remote transaction latency
   // must never consume time that belongs to the player on the clock.
   let currentTurnDeadlineAt = result.firstTurnId
-    ? new Date(Date.now() + result.pickSeconds * 1000)
+    ? serverDraftDeadline(result.pickSeconds)
     : null
   if (result.firstTurnId && currentTurnDeadlineAt) {
     const armed = await prisma.draftTurn.updateMany({
@@ -418,9 +419,7 @@ export async function setDraftPaused(sessionId: string, paused: boolean, actorUs
     return { updated, pickSeconds: session.pickSeconds, currentTurnIndex: session.currentTurnIndex }
   })
 
-  let currentTurnDeadlineAt = paused
-    ? null
-    : new Date(Date.now() + result.pickSeconds * 1000)
+  let currentTurnDeadlineAt = paused ? null : serverDraftDeadline(result.pickSeconds)
   if (currentTurnDeadlineAt) {
     const armed = await prisma.draftTurn.updateMany({
       where: {
@@ -750,23 +749,40 @@ export async function makeDraftSelection(input: MakeSelectionInput) {
         })
       }
 
-      return { selection, nextTurnId: nextTurn?.id ?? null, pickSeconds: session.pickSeconds }
+      return {
+        selection,
+        nextTurnId: nextTurn?.id ?? null,
+        nextTurnIndex: nextTurn?.overallIndex ?? turn.overallIndex + 1,
+        sessionStatus: nextTurn ? 'LIVE' : 'COMPLETED',
+        sessionRevision: session.revision + 1,
+        pickSeconds: session.pickSeconds,
+      }
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   )
 
+  let nextTurnDeadlineAt: Date | null = null
   if (result.nextTurnId) {
-    await prisma.draftTurn.updateMany({
+    const proposedDeadline = serverDraftDeadline(result.pickSeconds)
+    const armed = await prisma.draftTurn.updateMany({
       where: {
         id: result.nextTurnId,
         status: 'ACTIVE',
         draftSession: { status: 'LIVE' },
       },
-      data: { deadlineAt: new Date(Date.now() + result.pickSeconds * 1000) },
+      data: { deadlineAt: proposedDeadline },
     })
+    if (armed.count === 1) nextTurnDeadlineAt = proposedDeadline
   }
 
-  return result.selection
+  return {
+    ...result.selection,
+    nextTurnId: result.nextTurnId,
+    nextTurnIndex: result.nextTurnIndex,
+    nextTurnDeadlineAt,
+    sessionStatus: result.sessionStatus,
+    sessionRevision: result.sessionRevision,
+  }
 }
 
 async function autopickCurrentTurn(draftSessionId: string, requireExpiredClock: boolean) {

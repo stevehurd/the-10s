@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import TeamMark from '@/components/team-mark'
+import { displayedDraftSeconds, localDraftDeadline } from '@/lib/draft/clock'
 import { startSequentialPoller } from '@/lib/draft/sequential-poller'
 
 export interface TeamRecord {
@@ -105,6 +106,11 @@ export default function DraftRoom({
   const [controlPending, setControlPending] = useState(false)
   const [activeTab, setActiveTab] = useState<DraftTab>('PICK')
   const [now, setNow] = useState(() => Date.now())
+  const [canonicalDeadline, setCanonicalDeadline] = useState<{
+    turnId: string
+    deadlineAt: string
+    revision: number
+  } | null>(null)
   const autopickRequestedForTurn = useRef<string | null>(null)
   const draftLoadInFlight = useRef<Promise<void> | null>(null)
 
@@ -120,7 +126,39 @@ export default function DraftRoom({
         const response = await fetch(`/api/draft-sessions/${sessionId}`, { cache: 'no-store' })
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.error || 'Unable to load the draft')
-        setState(payload)
+        const incomingCurrentTurn = payload.turns.find(
+          (turn: Turn) => turn.id === payload.currentTurnId,
+        )
+        if (incomingCurrentTurn?.deadlineAt) {
+          setCanonicalDeadline((current) =>
+            !current || payload.session.revision >= current.revision
+              ? {
+                  turnId: incomingCurrentTurn.id,
+                  deadlineAt: incomingCurrentTurn.deadlineAt,
+                  revision: payload.session.revision,
+                }
+              : current,
+          )
+        }
+        setState((current) => {
+          if (current && payload.session.revision < current.session.revision) return current
+          if (
+            current &&
+            payload.session.revision === current.session.revision &&
+            payload.currentTurnId === current.currentTurnId
+          ) {
+            const localTurn = current.turns.find((turn) => turn.id === current.currentTurnId)
+            const incomingTurn = payload.turns.find((turn: Turn) => turn.id === payload.currentTurnId)
+            if (
+              localTurn?.deadlineAt &&
+              incomingTurn?.deadlineAt &&
+              new Date(localTurn.deadlineAt).getTime() < new Date(incomingTurn.deadlineAt).getTime()
+            ) {
+              incomingTurn.deadlineAt = localTurn.deadlineAt
+            }
+          }
+          return payload
+        })
         setError(null)
       } catch (loadError) {
         if (!quiet) setError(loadError instanceof Error ? loadError.message : 'Unable to load the draft')
@@ -188,8 +226,18 @@ export default function DraftRoom({
       (currentTurn.seasonParticipantId === state.viewerParticipantId || state.viewerIsCommissioner),
   )
 
-  const remainingSeconds = currentTurn?.deadlineAt
-    ? Math.max(0, Math.ceil((new Date(currentTurn.deadlineAt).getTime() - now) / 1000))
+  const remainingSeconds = displayedDraftSeconds(
+    currentTurn?.deadlineAt ?? null,
+    state?.session.pickSeconds ?? 0,
+    now,
+  )
+  const canonicalDeadlineAt = currentTurn
+    ? canonicalDeadline?.turnId === currentTurn.id
+      ? canonicalDeadline.deadlineAt
+      : currentTurn.deadlineAt
+    : null
+  const canonicalRemainingSeconds = canonicalDeadlineAt
+    ? Math.max(0, Math.ceil((new Date(canonicalDeadlineAt).getTime() - now) / 1_000))
     : null
   const sessionStatus = state?.session.status
   const draftComplete = sessionStatus === 'COMPLETED'
@@ -203,7 +251,7 @@ export default function DraftRoom({
     if (
       !currentTurn ||
       demo ||
-      remainingSeconds !== 0 ||
+      canonicalRemainingSeconds !== 0 ||
       sessionStatus !== 'LIVE' ||
       autopickRequestedForTurn.current === currentTurn.id
     ) {
@@ -214,7 +262,7 @@ export default function DraftRoom({
     void fetch(`/api/draft-sessions/${sessionId}/autopick`, { method: 'POST' })
       .then(() => loadDraft(true))
       .catch(() => undefined)
-  }, [currentTurn, demo, loadDraft, remainingSeconds, sessionId, sessionStatus])
+  }, [canonicalRemainingSeconds, currentTurn, demo, loadDraft, sessionId, sessionStatus])
 
   const conferences = useMemo(() => {
     if (!state) return []
@@ -292,8 +340,57 @@ export default function DraftRoom({
       })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Unable to submit the pick')
+      const pickedTeam = selectedTeam
+      if (payload.nextTurnId && payload.nextTurnDeadlineAt) {
+        setCanonicalDeadline({
+          turnId: payload.nextTurnId,
+          deadlineAt: payload.nextTurnDeadlineAt,
+          revision: payload.sessionRevision,
+        })
+      } else {
+        setCanonicalDeadline(null)
+      }
       setSelectedTeam(null)
-      await loadDraft(false, true)
+      setNow(Date.now())
+      setState((current) => {
+        if (!current) return current
+        const pickedTurn = current.turns.find((turn) => turn.id === current.currentTurnId)
+        if (!pickedTurn) return current
+
+        return {
+          ...current,
+          session: {
+            ...current.session,
+            currentTurnIndex: payload.nextTurnIndex,
+            revision: payload.sessionRevision,
+            status: payload.sessionStatus,
+          },
+          currentTurnId: payload.nextTurnId,
+          availableTeams: current.availableTeams.filter((team) => team.id !== pickedTeam.id),
+          unavailableTeams: [
+            ...current.unavailableTeams,
+            {
+              ...pickedTeam,
+              unavailableReason: `Selected by ${pickedTurn.seasonParticipant.user.name}`,
+            },
+          ],
+          turns: current.turns.map((turn) => turn.id === pickedTurn.id
+            ? {
+                ...turn,
+                status: 'COMPLETED',
+                deadlineAt: null,
+                selection: { selectionType: payload.selectionType, team: pickedTeam },
+              }
+            : turn.id === payload.nextTurnId
+              ? {
+                  ...turn,
+                  status: 'ACTIVE',
+                  deadlineAt: localDraftDeadline(current.session.pickSeconds).toISOString(),
+                }
+              : turn),
+        }
+      })
+      void loadDraft(true, true)
     } catch (selectionError) {
       setError(selectionError instanceof Error ? selectionError.message : 'Unable to submit the pick')
     } finally {
@@ -322,6 +419,15 @@ export default function DraftRoom({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error || 'Unable to update the draft')
       if (action !== 'UNDO' && payload) {
+        if (state?.currentTurnId && payload.currentTurnDeadlineAt) {
+          setCanonicalDeadline({
+            turnId: state.currentTurnId,
+            deadlineAt: payload.currentTurnDeadlineAt,
+            revision: payload.revision,
+          })
+        } else {
+          setCanonicalDeadline(null)
+        }
         setNow(Date.now())
         setState((current) => current ? {
           ...current,
@@ -334,7 +440,9 @@ export default function DraftRoom({
             ? {
                 ...turn,
                 status: payload.status === 'LIVE' ? 'ACTIVE' : turn.status,
-                deadlineAt: payload.currentTurnDeadlineAt,
+                deadlineAt: payload.status === 'LIVE'
+                  ? localDraftDeadline(current.session.pickSeconds).toISOString()
+                  : null,
               }
             : turn),
         } : current)
