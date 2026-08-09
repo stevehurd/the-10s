@@ -106,21 +106,31 @@ export default function DraftRoom({
   const [activeTab, setActiveTab] = useState<DraftTab>('PICK')
   const [now, setNow] = useState(() => Date.now())
   const autopickRequestedForTurn = useRef<string | null>(null)
-  const draftLoadInFlight = useRef(false)
+  const draftLoadInFlight = useRef<Promise<void> | null>(null)
 
-  const loadDraft = useCallback(async (quiet = false) => {
-    if (demo || draftLoadInFlight.current) return
-    draftLoadInFlight.current = true
+  const loadDraft = useCallback(async (quiet = false, refreshAfterInFlight = false) => {
+    if (demo) return
+    if (draftLoadInFlight.current) {
+      await draftLoadInFlight.current
+      if (!refreshAfterInFlight) return
+    }
+
+    const request = (async () => {
+      try {
+        const response = await fetch(`/api/draft-sessions/${sessionId}`, { cache: 'no-store' })
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.error || 'Unable to load the draft')
+        setState(payload)
+        setError(null)
+      } catch (loadError) {
+        if (!quiet) setError(loadError instanceof Error ? loadError.message : 'Unable to load the draft')
+      }
+    })()
+    draftLoadInFlight.current = request
     try {
-      const response = await fetch(`/api/draft-sessions/${sessionId}`, { cache: 'no-store' })
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || 'Unable to load the draft')
-      setState(payload)
-      setError(null)
-    } catch (loadError) {
-      if (!quiet) setError(loadError instanceof Error ? loadError.message : 'Unable to load the draft')
+      await request
     } finally {
-      draftLoadInFlight.current = false
+      if (draftLoadInFlight.current === request) draftLoadInFlight.current = null
     }
   }, [demo, sessionId])
 
@@ -283,7 +293,7 @@ export default function DraftRoom({
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Unable to submit the pick')
       setSelectedTeam(null)
-      await loadDraft()
+      await loadDraft(false, true)
     } catch (selectionError) {
       setError(selectionError instanceof Error ? selectionError.message : 'Unable to submit the pick')
     } finally {
@@ -311,7 +321,25 @@ export default function DraftRoom({
       )
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error || 'Unable to update the draft')
-      await loadDraft()
+      if (action !== 'UNDO' && payload) {
+        setNow(Date.now())
+        setState((current) => current ? {
+          ...current,
+          session: {
+            ...current.session,
+            status: payload.status,
+            revision: payload.revision,
+          },
+          turns: current.turns.map((turn) => turn.id === current.currentTurnId
+            ? {
+                ...turn,
+                status: payload.status === 'LIVE' ? 'ACTIVE' : turn.status,
+                deadlineAt: payload.currentTurnDeadlineAt,
+              }
+            : turn),
+        } : current)
+      }
+      await loadDraft(false, true)
     } catch (controlError) {
       setError(controlError instanceof Error ? controlError.message : 'Unable to update the draft')
     } finally {

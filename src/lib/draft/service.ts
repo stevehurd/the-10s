@@ -297,7 +297,7 @@ export async function updateDraftLogistics(input: {
 }
 
 export async function startDraftSession(sessionId: string, actorUserId: string) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const session = await tx.draftSession.findUnique({
       where: { id: sessionId },
       include: { season: true, turns: { orderBy: { overallIndex: 'asc' }, take: 1 } },
@@ -310,14 +310,6 @@ export async function startDraftSession(sessionId: string, actorUserId: string) 
     const now = new Date()
     const firstTurn = session.turns[0]
     const status = firstTurn ? 'LIVE' : 'COMPLETED'
-    const deadlineAt = firstTurn ? new Date(now.getTime() + session.pickSeconds * 1000) : null
-
-    if (firstTurn) {
-      await tx.draftTurn.update({
-        where: { id: firstTurn.id },
-        data: { status: 'ACTIVE', deadlineAt },
-      })
-    }
 
     await tx.seasonParticipant.updateMany({
       where: { seasonId: session.seasonId, decisionsLockedAt: null },
@@ -352,12 +344,38 @@ export async function startDraftSession(sessionId: string, actorUserId: string) 
       },
     })
 
-    return updated
+    if (firstTurn) {
+      await tx.draftTurn.update({
+        where: { id: firstTurn.id },
+        data: { status: 'ACTIVE', deadlineAt: null },
+      })
+    }
+
+    return { updated, firstTurnId: firstTurn?.id ?? null, pickSeconds: session.pickSeconds }
   })
+
+  // Arm the clock after the main transaction commits. Remote transaction latency
+  // must never consume time that belongs to the player on the clock.
+  let currentTurnDeadlineAt = result.firstTurnId
+    ? new Date(Date.now() + result.pickSeconds * 1000)
+    : null
+  if (result.firstTurnId && currentTurnDeadlineAt) {
+    const armed = await prisma.draftTurn.updateMany({
+      where: {
+        id: result.firstTurnId,
+        status: 'ACTIVE',
+        draftSession: { status: 'LIVE' },
+      },
+      data: { deadlineAt: currentTurnDeadlineAt },
+    })
+    if (armed.count !== 1) currentTurnDeadlineAt = null
+  }
+
+  return { ...result.updated, currentTurnDeadlineAt }
 }
 
 export async function setDraftPaused(sessionId: string, paused: boolean, actorUserId: string) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const session = await tx.draftSession.findUnique({
       where: { id: sessionId },
       include: { season: true },
@@ -371,12 +389,6 @@ export async function setDraftPaused(sessionId: string, paused: boolean, actorUs
         'INVALID_STATUS',
       )
     }
-
-    const deadlineAt = paused ? null : new Date(Date.now() + session.pickSeconds * 1000)
-    await tx.draftTurn.updateMany({
-      where: { draftSessionId: session.id, overallIndex: session.currentTurnIndex },
-      data: { deadlineAt },
-    })
 
     const updated = await tx.draftSession.update({
       where: { id: session.id },
@@ -396,8 +408,33 @@ export async function setDraftPaused(sessionId: string, paused: boolean, actorUs
       },
     })
 
-    return updated
+    if (paused) {
+      await tx.draftTurn.updateMany({
+        where: { draftSessionId: session.id, overallIndex: session.currentTurnIndex },
+        data: { deadlineAt: null },
+      })
+    }
+
+    return { updated, pickSeconds: session.pickSeconds, currentTurnIndex: session.currentTurnIndex }
   })
+
+  let currentTurnDeadlineAt = paused
+    ? null
+    : new Date(Date.now() + result.pickSeconds * 1000)
+  if (currentTurnDeadlineAt) {
+    const armed = await prisma.draftTurn.updateMany({
+      where: {
+        draftSessionId: sessionId,
+        overallIndex: result.currentTurnIndex,
+        status: 'ACTIVE',
+        draftSession: { status: 'LIVE' },
+      },
+      data: { deadlineAt: currentTurnDeadlineAt },
+    })
+    if (armed.count !== 1) currentTurnDeadlineAt = null
+  }
+
+  return { ...result.updated, currentTurnDeadlineAt }
 }
 
 export async function undoLastDraftSelection(sessionId: string, actorUserId: string) {
@@ -509,7 +546,7 @@ export async function undoLastDraftSelection(sessionId: string, actorUserId: str
 }
 
 export async function makeDraftSelection(input: MakeSelectionInput) {
-  return prisma.$transaction(
+  const result = await prisma.$transaction(
     async (tx) => {
       const session = await tx.draftSession.findUnique({
         where: { id: input.draftSessionId },
@@ -658,15 +695,6 @@ export async function makeDraftSelection(input: MakeSelectionInput) {
         orderBy: { overallIndex: 'asc' },
       })
       const now = new Date()
-      if (nextTurn) {
-        await tx.draftTurn.update({
-          where: { id: nextTurn.id },
-          data: {
-            status: 'ACTIVE',
-            deadlineAt: new Date(now.getTime() + session.pickSeconds * 1000),
-          },
-        })
-      }
 
       if (!nextTurn && session.mode === 'OFFICIAL') {
         const openRosterSlots = await tx.rosterSlot.count({
@@ -715,10 +743,30 @@ export async function makeDraftSelection(input: MakeSelectionInput) {
         },
       })
 
-      return selection
+      if (nextTurn) {
+        await tx.draftTurn.update({
+          where: { id: nextTurn.id },
+          data: { status: 'ACTIVE', deadlineAt: null },
+        })
+      }
+
+      return { selection, nextTurnId: nextTurn?.id ?? null, pickSeconds: session.pickSeconds }
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   )
+
+  if (result.nextTurnId) {
+    await prisma.draftTurn.updateMany({
+      where: {
+        id: result.nextTurnId,
+        status: 'ACTIVE',
+        draftSession: { status: 'LIVE' },
+      },
+      data: { deadlineAt: new Date(Date.now() + result.pickSeconds * 1000) },
+    })
+  }
+
+  return result.selection
 }
 
 async function autopickCurrentTurn(draftSessionId: string, requireExpiredClock: boolean) {
