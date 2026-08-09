@@ -889,6 +889,7 @@ export async function autopickExpiredOfficialDrafts(now = new Date()) {
 export async function fastForwardRehearsalToFinalPick(
   draftSessionId: string,
   actorUserId: string,
+  maxSelections = Number.MAX_SAFE_INTEGER,
 ) {
   const session = await prisma.draftSession.findUnique({ where: { id: draftSessionId } })
   if (!session) throw new DraftRuleError('Draft session not found', 'NOT_FOUND', 404)
@@ -910,9 +911,11 @@ export async function fastForwardRehearsalToFinalPick(
   let remainingTurns = await prisma.draftTurn.count({
     where: { draftSessionId, status: { in: ['ACTIVE', 'PENDING'] } },
   })
-  while (remainingTurns > 1) {
+  let selectionsMade = 0
+  while (remainingTurns > 1 && selectionsMade < maxSelections) {
     await autopickCurrentTurn(draftSessionId, false)
     remainingTurns -= 1
+    selectionsMade += 1
   }
 
   const updated = await prisma.draftSession.findUniqueOrThrow({ where: { id: draftSessionId } })
@@ -921,6 +924,7 @@ export async function fastForwardRehearsalToFinalPick(
   return {
     draftSessionId,
     remainingTurns,
+    selectionsMade,
     selectionCount: await prisma.draftSelection.count({ where: { draftSessionId } }),
   }
 }

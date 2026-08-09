@@ -28,6 +28,12 @@ interface HarnessSession {
   reports: HarnessReport[]
 }
 
+interface HarnessProgress {
+  inProgress: true
+  remainingTurns: number
+  selectionCount: number
+}
+
 interface HarnessSeason {
   id: string
   name: string
@@ -51,15 +57,28 @@ export default function HarnessLab({ seasons }: { seasons: HarnessSeason[] }) {
     setMessage(null)
     setLatestReport(null)
     try {
-      const response = await fetch('/api/admin/draft-harness', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, seasonId: season.id, sessionId }),
-      })
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || 'Harness scenario failed')
+      let response: Response
+      let payload: HarnessReport | HarnessProgress | { sessionId: string; error?: string }
+      do {
+        response = await fetch('/api/admin/draft-harness', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, seasonId: season.id, sessionId }),
+        })
+        payload = await response.json()
+        if (!response.ok && response.status !== 202) {
+          throw new Error('error' in payload && payload.error ? payload.error : 'Harness scenario failed')
+        }
+        if (response.status === 202 && 'inProgress' in payload) {
+          setMessage(`Completing rehearsal… ${payload.selectionCount} picks made, ${payload.remainingTurns} turns remaining.`)
+        }
+      } while (action === 'COMPLETE' && response.status === 202)
+
       if (action === 'CREATE') setMessage('Fresh isolated rehearsal created. Run any scenario below.')
-      else setLatestReport(payload as HarnessReport)
+      else {
+        setMessage(null)
+        setLatestReport(payload as HarnessReport)
+      }
       router.refresh()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Harness scenario failed')

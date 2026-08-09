@@ -44,7 +44,8 @@ export async function POST(request: Request) {
       return Response.json(await runLifecycleHarness(sessionId, authorization.appUser.id))
     }
     if (action === 'COMPLETE' && sessionId) {
-      return Response.json(await runCompleteDraftHarness(sessionId, authorization.appUser.id))
+      const result = await runCompleteDraftHarness(sessionId, authorization.appUser.id)
+      return Response.json(result, { status: 'inProgress' in result ? 202 : 200 })
     }
     return Response.json({ error: 'Unsupported harness action' }, { status: 400 })
   } catch (error) {

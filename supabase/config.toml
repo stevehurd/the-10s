@@ -236,7 +236,7 @@ otp_length = 6
 otp_expiry = 900
 
 [auth.email.template.magic_link]
-subject = "{{ .Token }} is your sign-in code for The 10's"
+subject = "Your sign-in link for The 10's"
 content_path = "./supabase/templates/magic-link.html"
 
 # Use a production-ready SMTP server

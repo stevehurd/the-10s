@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import TeamMark from '@/components/team-mark'
+import { startSequentialPoller } from '@/lib/draft/sequential-poller'
 
 export interface TeamRecord {
   wins: number
@@ -105,9 +106,11 @@ export default function DraftRoom({
   const [activeTab, setActiveTab] = useState<DraftTab>('PICK')
   const [now, setNow] = useState(() => Date.now())
   const autopickRequestedForTurn = useRef<string | null>(null)
+  const draftLoadInFlight = useRef(false)
 
   const loadDraft = useCallback(async (quiet = false) => {
-    if (demo) return
+    if (demo || draftLoadInFlight.current) return
+    draftLoadInFlight.current = true
     try {
       const response = await fetch(`/api/draft-sessions/${sessionId}`, { cache: 'no-store' })
       const payload = await response.json()
@@ -116,17 +119,25 @@ export default function DraftRoom({
       setError(null)
     } catch (loadError) {
       if (!quiet) setError(loadError instanceof Error ? loadError.message : 'Unable to load the draft')
+    } finally {
+      draftLoadInFlight.current = false
     }
   }, [demo, sessionId])
 
   useEffect(() => {
     if (demo) return
-    const initialLoad = window.setTimeout(() => void loadDraft(), 0)
-    const poll = window.setInterval(() => void loadDraft(true), 2_000)
-    return () => {
-      window.clearTimeout(initialLoad)
-      window.clearInterval(poll)
-    }
+    let firstLoad = true
+    return startSequentialPoller({
+      intervalMs: 2_000,
+      task: async () => {
+        await loadDraft(!firstLoad)
+        firstLoad = false
+      },
+      scheduler: {
+        setTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
+        clearTimeout: (handle) => window.clearTimeout(handle as number),
+      },
+    })
   }, [demo, loadDraft])
 
   useEffect(() => {

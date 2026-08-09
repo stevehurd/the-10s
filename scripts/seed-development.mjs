@@ -1,5 +1,10 @@
 import { PrismaClient } from '@prisma/client'
 import { fetchDevelopmentSportsDataset } from './lib/development-sportsdata.mjs'
+import {
+  assertSeedModeTransition,
+  assertSyntheticTeamCleanupSafe,
+  isSyntheticDevelopmentTeam,
+} from './lib/development-seed-safety.mjs'
 
 const prisma = new PrismaClient()
 const developmentPoolSlug = 'the-10s-development'
@@ -43,6 +48,7 @@ function demoTeams() {
 async function seed() {
   const commissionerEmail = requireDevelopmentConfirmation()
   const useSportsData = process.argv.includes('--sportsdata')
+  const allowDemoDowngrade = process.argv.includes('--allow-demo-downgrade')
   const teamFixtures = useSportsData
     ? await fetchDevelopmentSportsDataset(process.env.SPORTSDATA_API_KEY)
     : demoTeams()
@@ -52,8 +58,49 @@ async function seed() {
     async (tx) => {
       const existingPool = await tx.pool.findUnique({ where: { slug: developmentPoolSlug } })
       if (existingPool) {
+        const existingSportsDataEntries = await tx.seasonTeamEligibility.count({
+          where: { season: { poolId: existingPool.id }, source: 'SPORTSDATAIO' },
+        })
+        assertSeedModeTransition({ existingSportsDataEntries, useSportsData, allowDemoDowngrade })
         await tx.season.deleteMany({ where: { poolId: existingPool.id } })
         await tx.pool.delete({ where: { id: existingPool.id } })
+      }
+
+      if (useSportsData) {
+        const possibleSyntheticTeams = await tx.team.findMany({
+          where: {
+            OR: [
+              { name: { startsWith: 'Demo NFL ' }, league: 'NFL' },
+              { name: { startsWith: 'Demo College ' }, league: 'COLLEGE' },
+            ],
+          },
+          select: {
+            id: true,
+            name: true,
+            league: true,
+            externalId: true,
+            sportsDataTeamId: true,
+            sportsDataGlobalTeamId: true,
+            _count: {
+              select: {
+                drafts: true,
+                homeGames: true,
+                awayGames: true,
+                gameWins: true,
+                seasonRecords: true,
+                seasonEligibility: true,
+                rosterSlots: true,
+                inheritedRosterSlots: true,
+                draftSelections: true,
+              },
+            },
+          },
+        })
+        const syntheticTeams = possibleSyntheticTeams.filter(isSyntheticDevelopmentTeam)
+        assertSyntheticTeamCleanupSafe(syntheticTeams)
+        if (syntheticTeams.length > 0) {
+          await tx.team.deleteMany({ where: { id: { in: syntheticTeams.map((team) => team.id) } } })
+        }
       }
 
       const pool = await tx.pool.create({

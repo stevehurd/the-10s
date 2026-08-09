@@ -14,14 +14,14 @@
 - A timeout selects the eligible available team with the best prior-season record: wins descending, losses ascending, ties descending, then team name.
 - The browser requests an autopick immediately when its visible clock expires. A server-owned cron worker checks once per minute and advances any expired official turn even when no draft room is open.
 - Commissioners may pause, resume, pick for a participant, undo, and correct a draft. Every such action is audited.
-- Sign-in is invitation-only using Supabase email OTP. League data requires authentication. Member contact information is private.
+- Sign-in is invitation-only using Supabase passwordless email links. League data requires authentication. Member contact information is private.
 
 ## Delivery phases
 
 1. Preserve the 2025 production data and characterize current SportsDataIO scoring with fixtures.
 2. Establish governance, secret boundaries, versioned migrations, and isolated development infrastructure.
 3. Introduce pools, stable pool seats, season participants, season-specific records, and audited lifecycle state.
-4. Add Supabase email OTP and server-side member/commissioner authorization.
+4. Add Supabase passwordless email links and server-side member/commissioner authorization.
 5. Build season setup, FBS eligibility review, succession, and Keep/Release management.
 6. Build the deterministic draft engine, quota-aware autopick, and concurrency constraints.
 7. Build rehearsal mode and automated 15-seat simulations.
@@ -63,15 +63,15 @@ Implemented in development:
 
 - Commissioners can assign, correct, or remove an invitation email on an
   unclaimed legacy profile instead of creating a duplicate player.
-- The invited user must prove control of the assigned address through Supabase
-  email OTP before `auth_user_id` is linked.
+- The invited user must prove control of the assigned address through a
+  Supabase passwordless email link before `auth_user_id` is linked.
 - The UI shows the legacy player name and proposed email, distinguishes
   unclaimed, waiting, and claimed profiles, and explains that assigning an
   address does not itself send an email.
 - Duplicate emails, already-claimed profiles, and attempts to move an auth
   identity between profiles are rejected.
 - Invitation assignment, correction, removal, and first successful claim are
-  audited without storing OTP codes, auth tokens, or email addresses in audit
+  audited without storing auth links, auth tokens, or email addresses in audit
   metadata.
 - Unclaimed profiles remain visible in historical standings but have no
   authenticated access.
@@ -81,16 +81,16 @@ Implemented in development:
   that a message was sent.
 - The commissioner UI exposes send, resend, and retry controls while delivery
   remains visibly disabled until a verified domain and Resend configuration
-  are present. The invitation CTA opens a prefilled OTP login; it never embeds
+  are present. The invitation CTA opens a prefilled passwordless login; it never embeds
   an auth token.
 - Invitation send requests are commissioner-only, idempotent per player and
   attempt, and audited without storing provider responses or credentials.
 
 Remaining before member onboarding:
 
-- Exercise the full Supabase OTP claim with a real legacy-player address in
+- Exercise the full Supabase email-link claim with a real legacy-player address in
   development once outbound email is configured.
-- Verify a sending domain, connect Resend to Supabase SMTP for OTP delivery,
+- Verify a sending domain, connect Resend to Supabase SMTP for auth-link delivery,
   and add the server-only Resend invitation variables documented in
   `.env.example` before enabling outbound invitations.
 - Add a separate, explicit account-recovery workflow before allowing the email

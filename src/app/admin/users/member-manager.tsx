@@ -1,10 +1,10 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useState } from 'react'
 
 import AdminPageHeader from '@/components/admin-page-header'
 
-interface Member {
+export interface Member {
   id: string
   name: string
   email: string | null
@@ -18,7 +18,7 @@ interface Member {
   invitationSendAttempts: number
 }
 
-interface InvitationDelivery {
+export interface InvitationDelivery {
   enabled: boolean
   message: string
 }
@@ -28,22 +28,22 @@ async function getError(response: Response) {
   return body?.error ?? `Request failed (${response.status})`
 }
 
-export default function MemberManager() {
-  const [members, setMembers] = useState<Member[]>([])
+export default function MemberManager({
+  initialMembers,
+  initialInvitationDelivery,
+}: {
+  initialMembers: Member[]
+  initialInvitationDelivery: InvitationDelivery
+}) {
+  const [members, setMembers] = useState<Member[]>(initialMembers)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'MEMBER' | 'COMMISSIONER'>('MEMBER')
-  const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [editingInvitationId, setEditingInvitationId] = useState<string | null>(null)
   const [invitationEmail, setInvitationEmail] = useState('')
-  const [invitationDelivery, setInvitationDelivery] = useState<InvitationDelivery>({
-    enabled: false,
-    message: 'Checking invitation email setup…',
-  })
-  const activeMembers = members.filter((member) => member.status === 'ACTIVE')
-  const pendingInvitationCount = activeMembers.filter((member) => member.invitationState !== 'JOINED').length
+  const [invitationDelivery, setInvitationDelivery] = useState<InvitationDelivery>(initialInvitationDelivery)
 
   async function load() {
     const response = await fetch('/api/users')
@@ -56,13 +56,7 @@ export default function MemberManager() {
       setInvitationDelivery(result.invitationDelivery)
     }
     else setMessage(await getError(response))
-    setLoading(false)
   }
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0)
-    return () => window.clearTimeout(timer)
-  }, [])
 
   async function invite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -151,26 +145,6 @@ export default function MemberManager() {
           title="People"
         />
 
-        {!loading && pendingInvitationCount > 0 && (
-          <section className="rounded-2xl border border-blue-400/30 bg-blue-50 p-5">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">Legacy player invitations</p>
-            <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-black">{pendingInvitationCount} players still need to join</h2>
-                <p className="mt-1 max-w-2xl text-sm text-slate-400">Assign each player’s sign-in email, then send their invitation. Their first verified code claims the existing profile and all of its historical rosters.</p>
-                {!invitationDelivery.enabled && <p className="mt-3 text-sm font-semibold text-amber-800">{invitationDelivery.message}</p>}
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-wide">
-                <span className="rounded-full bg-red-50 px-3 py-1.5 text-red-700">{activeMembers.filter((member) => member.invitationState === 'NEEDS_EMAIL').length} need email</span>
-                <span className="rounded-full bg-white px-3 py-1.5 text-slate-700">{activeMembers.filter((member) => member.invitationState === 'READY_TO_INVITE').length} ready</span>
-                <span className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-800">{activeMembers.filter((member) => member.invitationState === 'INVITATION_SENT').length} sent</span>
-                <span className="rounded-full bg-red-100 px-3 py-1.5 text-red-800">{activeMembers.filter((member) => member.invitationState === 'SEND_FAILED').length} failed</span>
-                <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-700">{activeMembers.filter((member) => member.invitationState === 'JOINED').length} joined</span>
-              </div>
-            </div>
-          </section>
-        )}
-
         <form className="grid gap-4 rounded-2xl border border-white/10 bg-slate-900 p-5 md:grid-cols-[1fr_1.4fr_180px_auto] md:items-end" onSubmit={invite}>
           <div className="md:col-span-4">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">New pool member</p>
@@ -190,8 +164,7 @@ export default function MemberManager() {
             <div><h2 className="font-black">Pool members</h2><p className="mt-0.5 text-sm text-slate-500">Access and commissioner permissions</p></div>
             <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-slate-300">{members.length} people</span>
           </div>
-          {loading ? <p className="p-5 text-slate-500">Loading members…</p> : (
-            <div className="divide-y divide-white/10">
+          <div className="divide-y divide-white/10">
               {members.map((member) => (
                 <div className={`p-5 ${member.status !== 'ACTIVE' ? 'bg-white/5 opacity-60' : ''}`} data-member-id={member.id} key={member.id}>
                   <div className="flex flex-wrap items-center justify-between gap-4">
@@ -244,8 +217,7 @@ export default function MemberManager() {
                   )}
                 </div>
               ))}
-            </div>
-          )}
+          </div>
         </section>
       </div>
     </main>

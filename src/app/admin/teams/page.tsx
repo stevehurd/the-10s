@@ -1,8 +1,7 @@
-'use client'
-
-import { useState, useEffect } from 'react'
+import Link from 'next/link'
 
 import TeamMark from '@/components/team-mark'
+import { prisma } from '@/lib/db'
 
 interface Team {
   id: string
@@ -14,26 +13,27 @@ interface Team {
   logoUrl: string | null
 }
 
-export default function TeamsPage() {
-  const [teams, setTeams] = useState<Team[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'ALL' | 'NFL' | 'COLLEGE'>('ALL')
-
-  useEffect(() => {
-    fetchTeams()
-  }, [])
-
-  const fetchTeams = async () => {
-    try {
-      const response = await fetch('/api/teams')
-      const data = await response.json()
-      setTeams(data)
-    } catch (error) {
-      console.error('Failed to fetch teams:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+export default async function TeamsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ league?: string }>
+}) {
+  const requestedLeague = (await searchParams).league?.toUpperCase()
+  const filter: 'ALL' | 'NFL' | 'COLLEGE' = requestedLeague === 'NFL' || requestedLeague === 'COLLEGE'
+    ? requestedLeague
+    : 'ALL'
+  const teams: Team[] = await prisma.team.findMany({
+    orderBy: [{ league: 'asc' }, { conference: 'asc' }, { name: 'asc' }],
+    select: {
+      id: true,
+      name: true,
+      abbreviation: true,
+      conference: true,
+      division: true,
+      league: true,
+      logoUrl: true,
+    },
+  })
 
   const filteredTeams = teams.filter(team => 
     filter === 'ALL' ? true : team.league === filter
@@ -63,7 +63,7 @@ export default function TeamsPage() {
         {/* Breadcrumb */}
         <nav className="mb-6">
           <div className="flex items-center space-x-2 text-sm text-slate-500">
-            <a href="/admin" className="hover:text-slate-100">Admin</a>
+            <Link href="/admin" className="hover:text-slate-100">Admin</Link>
             <span>/</span>
             <span className="font-medium text-slate-100">Teams</span>
           </div>
@@ -78,8 +78,8 @@ export default function TeamsPage() {
 
         {/* Filter Buttons */}
         <div className="mb-6 flex flex-wrap gap-2">
-          <button
-            onClick={() => setFilter('ALL')}
+          <Link
+            href="/admin/teams"
             className={`rounded-full px-4 py-2 font-medium transition-colors ${
               filter === 'ALL' 
                 ? 'bg-blue-600 text-white' 
@@ -87,9 +87,9 @@ export default function TeamsPage() {
             }`}
           >
             All Teams ({teams.length})
-          </button>
-          <button
-            onClick={() => setFilter('NFL')}
+          </Link>
+          <Link
+            href="/admin/teams?league=NFL"
             className={`rounded-full px-4 py-2 font-medium transition-colors ${
               filter === 'NFL' 
                 ? 'bg-blue-600 text-white' 
@@ -97,9 +97,9 @@ export default function TeamsPage() {
             }`}
           >
             NFL ({nflTeams.length})
-          </button>
-          <button
-            onClick={() => setFilter('COLLEGE')}
+          </Link>
+          <Link
+            href="/admin/teams?league=COLLEGE"
             className={`rounded-full px-4 py-2 font-medium transition-colors ${
               filter === 'COLLEGE' 
                 ? 'bg-blue-600 text-white' 
@@ -107,15 +107,11 @@ export default function TeamsPage() {
             }`}
           >
             College ({collegeTeams.length})
-          </button>
+          </Link>
         </div>
 
         {/* Teams Display */}
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500"></div>
-          </div>
-        ) : filter === 'COLLEGE' ? (
+        {filter === 'COLLEGE' ? (
           /* College teams grouped by conference */
           <div className="space-y-8">
             {sortedConferences.map(conference => (

@@ -32,7 +32,7 @@ try {
   })
   if (!currentSeason) throw new Error('2026 development season was not found')
 
-  const [seasons, memberships, commissioners, participants, rosterSlots, eligibility, demoRosterSlots] =
+  const [seasons, memberships, commissioners, participants, rosterSlots, eligibility, demoRosterSlots, demoTeams] =
     await Promise.all([
       prisma.season.count({ where: { poolId: pool.id } }),
       prisma.poolMembership.count({ where: { poolId: pool.id, status: 'ACTIVE' } }),
@@ -48,6 +48,14 @@ try {
       prisma.rosterSlot.count({
         where: { season: { poolId: pool.id }, team: { name: { startsWith: 'Demo ' } } },
       }),
+      prisma.team.count({
+        where: {
+          OR: [
+            { name: { startsWith: 'Demo NFL ' }, league: 'NFL' },
+            { name: { startsWith: 'Demo College ' }, league: 'COLLEGE' },
+          ],
+        },
+      }),
     ])
 
   assertCount('seasons', seasons, 2)
@@ -60,6 +68,7 @@ try {
     assertCount('SportsDataIO NFL teams', eligibility.filter((entry) => entry.leagueSnapshot === 'NFL').length, 32)
     assertRange('SportsDataIO FBS teams', eligibility.filter((entry) => entry.leagueSnapshot === 'COLLEGE').length, 120, 160)
     assertCount('placeholder roster slots', demoRosterSlots, 0)
+    assertCount('synthetic catalog teams', demoTeams, 0)
     console.log('Real-team development seed is internally consistent.')
   } else {
     assertCount('fixture teams', eligibility.length, 162)

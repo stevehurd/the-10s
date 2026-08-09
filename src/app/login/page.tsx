@@ -3,9 +3,10 @@
 import { FormEvent, Suspense, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
+import { buildEmailAuthCallbackUrl, normalizeNextPath } from '@/lib/auth/redirect'
 import { createClient } from '@/lib/supabase/client'
 
-type Step = 'EMAIL' | 'CODE'
+type Step = 'EMAIL' | 'LINK_SENT'
 
 export default function LoginPage() {
   return (
@@ -23,18 +24,26 @@ function LoginForm() {
     : ''
   const [step, setStep] = useState<Step>('EMAIL')
   const [email, setEmail] = useState(invitedEmail)
-  const [code, setCode] = useState('')
-  const [message, setMessage] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(
+    searchParams.get('error') === 'invalid-code'
+      ? 'That sign-in link is invalid or has expired. Request a new one.'
+      : null,
+  )
   const [pending, setPending] = useState(false)
 
-  async function requestCode(event: FormEvent<HTMLFormElement>) {
+  async function requestLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setPending(true)
     setMessage(null)
+
+    const nextPath = normalizeNextPath(searchParams.get('next'))
 
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { shouldCreateUser: true },
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: buildEmailAuthCallbackUrl(window.location.origin, nextPath),
+      },
     })
 
     setPending(false)
@@ -43,29 +52,7 @@ function LoginForm() {
       return
     }
 
-    setStep('CODE')
-    setMessage(`We sent a six-digit sign-in code to ${email.trim()}.`)
-  }
-
-  async function verifyCode(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setPending(true)
-    setMessage(null)
-
-    const { error } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: code.trim(),
-      type: 'email',
-    })
-
-    setPending(false)
-    if (error) {
-      setMessage(error.message)
-      return
-    }
-
-    const nextPath = searchParams.get('next')
-    window.location.assign(nextPath?.startsWith('/') ? nextPath : '/')
+    setStep('LINK_SENT')
   }
 
   return (
@@ -78,7 +65,7 @@ function LoginForm() {
             </p>
             <h1 className="text-3xl font-semibold tracking-tight">Sign in to your pool</h1>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              No password needed. We&apos;ll email the invited address a one-time code.
+              No password needed. We&apos;ll email you a secure, one-time sign-in link.
             </p>
           </div>
 
@@ -89,7 +76,7 @@ function LoginForm() {
           ) : null}
 
           {step === 'EMAIL' ? (
-            <form className="space-y-5" onSubmit={requestCode}>
+            <form className="space-y-5" onSubmit={requestLink}>
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-200">Email address</span>
                 <input
@@ -108,44 +95,26 @@ function LoginForm() {
                 disabled={pending}
                 type="submit"
               >
-                {pending ? 'Sending…' : 'Email me a code'}
+                {pending ? 'Sending…' : 'Email me a sign-in link'}
               </button>
             </form>
           ) : (
-            <form className="space-y-5" onSubmit={verifyCode}>
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-200">Six-digit code</span>
-                <input
-                  autoComplete="one-time-code"
-                  autoFocus
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-center text-2xl tracking-[0.35em] outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400/10"
-                  inputMode="numeric"
-                  maxLength={6}
-                  onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
-                  pattern="[0-9]{6}"
-                  required
-                  value={code}
-                />
-              </label>
-              <button
-                className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={pending || code.length !== 6}
-                type="submit"
-              >
-                {pending ? 'Checking…' : 'Sign in'}
-              </button>
+            <div className="space-y-5 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-5">
+              <div>
+                <h2 className="text-xl font-semibold">Check your email</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">Open the secure sign-in link sent to <strong>{email.trim()}</strong>. It will return you here and sign you in.</p>
+              </div>
               <button
                 className="w-full px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200"
                 onClick={() => {
                   setStep('EMAIL')
-                  setCode('')
                   setMessage(null)
                 }}
                 type="button"
               >
                 Use a different email
               </button>
-            </form>
+            </div>
           )}
 
           {message ? (

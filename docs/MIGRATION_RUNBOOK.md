@@ -144,7 +144,7 @@ Compare these values with the source export:
 - Exactly one intended user has an active commissioner membership.
 - The post-migration audit event records the source fingerprint and `reconciliation: PASSED`.
 
-Pre-create each pool member with the correct email through commissioner access. Their first verified Supabase OTP sign-in atomically links `auth_user_id` to the migrated profile.
+Pre-create each pool member with the correct email through commissioner access. Their first verified Supabase email-link sign-in atomically links `auth_user_id` to the migrated profile.
 
 ## Rollback
 

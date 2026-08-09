@@ -11,9 +11,9 @@ Prerequisites: Node 20+ and Docker Desktop.
 3. Run `npm run supabase:status` to find the local API, database, Studio, and Mailpit values. Do not paste those values into source files or chat.
 4. Put the four required values in an ignored `.env.local` file using the names in `.env.example`. For the local stack, `DATABASE_URL` and `DIRECT_URL` can use the same local database URL.
 5. Run `npm run db:setup` to apply the reviewed Prisma migrations.
-6. Run `npm run db:seed:demo` to create the fully synthetic 15-person development pool, or `npm run db:seed:sportsdata` to use real SportsDataIO team identities and prior-season records with synthetic people and roster assignments.
+6. Run `npm run db:seed:demo` only for a brand-new synthetic environment, or `npm run db:seed:sportsdata` to use real SportsDataIO team identities and prior-season records with synthetic people and roster assignments. Once a development pool uses SportsDataIO, the demo seed refuses to downgrade it unless `--allow-demo-downgrade` is passed intentionally.
 7. Run `npm run supabase:check`, then `npm run dev`.
-8. Open `http://127.0.0.1:54324` to read locally captured OTP emails. Local emails are never delivered externally.
+8. Open `http://127.0.0.1:54324` to read locally captured authentication emails. Local emails are never delivered externally.
 
 Use `npm run supabase:stop` when finished. Do not use `supabase db reset --linked`; it destroys a linked remote database.
 
@@ -68,7 +68,7 @@ The public Supabase URL and publishable key are intentionally browser-safe. Data
 
 Invitation delivery stays disabled unless all four optional invitation fields
 are configured and `INVITATION_EMAIL_ENABLED` is exactly `true`. Resend SMTP
-credentials belong in Supabase for OTP delivery; the restricted Resend API key
+credentials belong in Supabase for passwordless-link delivery; the restricted Resend API key
 belongs in the application server environment for the initial invitation CTA.
 
 AI tools working in this repository are prohibited from invoking or reading 1Password references without explicit approval. A human can use the commands normally.

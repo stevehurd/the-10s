@@ -30,6 +30,12 @@ export type HarnessResult = {
   checks: HarnessCheck[]
   sessionId: string
 }
+export type HarnessProgress = {
+  inProgress: true
+  sessionId: string
+  remainingTurns: number
+  selectionCount: number
+}
 
 async function rosterFingerprint(seasonId: string) {
   const slots = await prisma.rosterSlot.findMany({
@@ -220,10 +226,21 @@ export async function runLifecycleHarness(sessionId: string, actorUserId: string
   return result
 }
 
-export async function runCompleteDraftHarness(sessionId: string, actorUserId: string): Promise<HarnessResult> {
+export async function runCompleteDraftHarness(
+  sessionId: string,
+  actorUserId: string,
+): Promise<HarnessResult | HarnessProgress> {
   const session = await requireHarnessSession(sessionId)
   if (session.status !== 'COMPLETED') {
-    await fastForwardRehearsalToFinalPick(sessionId, actorUserId)
+    const progress = await fastForwardRehearsalToFinalPick(sessionId, actorUserId, 5)
+    if (progress.remainingTurns > 1) {
+      return {
+        inProgress: true,
+        sessionId,
+        remainingTurns: progress.remainingTurns,
+        selectionCount: progress.selectionCount,
+      }
+    }
     await setDraftPaused(sessionId, false, actorUserId)
     const finalTurn = await prisma.draftTurn.findFirstOrThrow({ where: { draftSessionId: sessionId, status: 'ACTIVE' } })
     await prisma.draftTurn.update({ where: { id: finalTurn.id }, data: { deadlineAt: new Date(Date.now() - 1_000) } })

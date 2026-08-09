@@ -21,7 +21,7 @@ test('invitation delivery stays disabled until every server setting is ready', (
   assert.equal(invitationDeliveryAvailability(configuredEnvironment).enabled, true)
 })
 
-test('invitation email links to a prefilled OTP login and escapes player names', () => {
+test('invitation email links to a prefilled passwordless login and escapes player names', () => {
   const message = buildInvitationEmail({
     playerName: '<Demo & Player>',
     appUrl: configuredEnvironment.APP_URL,

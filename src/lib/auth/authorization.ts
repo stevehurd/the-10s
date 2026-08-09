@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { cache } from 'react'
 
 import { prisma } from '@/lib/db'
 import { createClient } from '@/lib/supabase/server'
@@ -7,14 +8,16 @@ import { selectAuthorizedMembership } from './policy'
 
 export type AppRole = 'MEMBER' | 'COMMISSIONER'
 
-export async function getCurrentAppUser() {
+async function resolveCurrentAppUser() {
   const supabase = await createClient()
-  const {
-    data: { user: authUser },
-    error,
-  } = await supabase.auth.getUser()
+  const { data, error } = await supabase.auth.getClaims()
+  const subject = data?.claims.sub
+  const email = typeof data?.claims.email === 'string' ? data.claims.email : undefined
+  const newEmail = typeof data?.claims.new_email === 'string' ? data.claims.new_email : undefined
 
-  if (error || !authUser) return null
+  if (error || !subject) return null
+
+  const authUser = { id: subject, email, new_email: newEmail }
 
   const includeMemberships = {
     memberships: {
@@ -28,7 +31,7 @@ export async function getCurrentAppUser() {
     include: includeMemberships,
   })
 
-  // A successful email OTP proves control of the invited email address. This
+  // A successful passwordless email link proves control of the invited address. This
   // atomically connects a migrated profile on its first Supabase sign-in.
   if (!appUser && authUser.email) {
     const invitedProfile = await prisma.user.findFirst({
@@ -57,7 +60,7 @@ export async function getCurrentAppUser() {
                 action: 'LEGACY_PLAYER_PROFILE_CLAIMED',
                 entityType: 'User',
                 entityId: invitedProfile.id,
-                data: { provider: 'SUPABASE_EMAIL_OTP' },
+                data: { provider: 'SUPABASE_EMAIL_LINK' },
               },
             })
           }
@@ -108,6 +111,10 @@ export async function getCurrentAppUser() {
   if (!appUser) return null
   return { authUser, appUser }
 }
+
+// Layouts and pages frequently need the same identity in one render. React's
+// request memoization prevents repeating Supabase auth and profile queries.
+export const getCurrentAppUser = cache(resolveCurrentAppUser)
 
 export async function authorizeApi(
   requiredRole: AppRole = 'MEMBER',

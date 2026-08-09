@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { normalizeNextPath } from '@/lib/auth/redirect'
 import { getSupabasePublicConfig } from './config'
 
 const PUBLIC_PATHS = new Set(['/login', '/auth/confirm'])
@@ -31,11 +32,10 @@ export async function updateSession(request: NextRequest) {
     },
   })
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data, error } = await supabase.auth.getClaims()
+  const isAuthenticated = !error && Boolean(data?.claims.sub)
 
-  if (!user && !isPublicPath(pathname)) {
+  if (!isAuthenticated && !isPublicPath(pathname)) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
@@ -46,11 +46,12 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (user && pathname === '/login') {
-    const nextPath = request.nextUrl.searchParams.get('next')
+  if (isAuthenticated && pathname === '/login') {
+    const nextPath = normalizeNextPath(request.nextUrl.searchParams.get('next'))
     const destination = request.nextUrl.clone()
-    destination.pathname = nextPath?.startsWith('/') ? nextPath : '/'
-    destination.search = ''
+    const destinationUrl = new URL(nextPath, request.nextUrl.origin)
+    destination.pathname = destinationUrl.pathname
+    destination.search = destinationUrl.search
     return NextResponse.redirect(destination)
   }
 
