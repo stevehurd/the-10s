@@ -16,6 +16,10 @@
     {
       "id": "20260808000000_invitation_delivery",
       "sha256": "dbb97509f60ae111f59121806259ab6636f92651b40e8f221bca8f250f64dc5c"
+    },
+    {
+      "id": "20260809000000_standings_sync_runs",
+      "sha256": "1ed419f32bd372608c7db6191daae1694819213cd785c854b822cdd091f050d5"
     }
   ]
 }

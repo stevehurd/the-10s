@@ -18,6 +18,132 @@ export interface CollegeStandingTeam {
   Active?: boolean
 }
 
+export function standingsSyncStatus(updatedTeams: number, errorCount: number) {
+  if (errorCount === 0) return 'SUCCEEDED' as const
+  return updatedTeams > 0 ? 'PARTIAL' as const : 'FAILED' as const
+}
+
+export function standingsMatchPreviousSeason(
+  current: Array<{ teamId: string; wins: number; losses: number; ties: number }>,
+  previous: Array<{ teamId: string; wins: number; losses: number; ties: number }>,
+) {
+  if (current.length === 0 || current.length !== previous.length) return false
+  const previousByTeam = new Map(previous.map((record) => [record.teamId, record]))
+  return current.every((record) => {
+    const prior = previousByTeam.get(record.teamId)
+    return prior != null
+      && prior.wins === record.wins
+      && prior.losses === record.losses
+      && prior.ties === record.ties
+  })
+}
+
+function validateStandingRows(
+  label: string,
+  season: number,
+  rows: SportsDataStanding[],
+) {
+  const seenTeamIds = new Set<number>()
+  for (const row of rows) {
+    if (row.Season !== season) {
+      throw new Error(`${label} contained ${row.Team || row.Key} from season ${row.Season}`)
+    }
+    if (!Number.isInteger(row.TeamID) || row.TeamID <= 0) {
+      throw new Error(`${label} contained an invalid team ID`)
+    }
+    if (seenTeamIds.has(row.TeamID)) {
+      throw new Error(`${label} contained duplicate team ID ${row.TeamID}`)
+    }
+    seenTeamIds.add(row.TeamID)
+    for (const [field, value] of [
+      ['wins', row.Wins],
+      ['losses', row.Losses],
+      ['ties', row.Ties ?? 0],
+    ] as const) {
+      if (!Number.isInteger(value) || value < 0) {
+        throw new Error(`${label} contained invalid ${field} for ${row.Team || row.Key}`)
+      }
+    }
+  }
+}
+
+/**
+ * Validates the season-scoped NFL feeds before any database write. The regular
+ * feed must contain the complete 32-team league; postseason rows may be empty
+ * or contain only teams already present in the regular feed.
+ */
+export function validateAndCombineNFLStandings(
+  season: number,
+  regular: SportsDataStanding[],
+  postseason: SportsDataStanding[],
+  expectedTeamCount = 32,
+): CombinedStanding[] {
+  validateStandingRows('NFL regular-season standings', season, regular)
+  validateStandingRows('NFL postseason standings', season, postseason)
+  if (regular.length === 0) {
+    throw new Error(`NFL regular-season standings are not available yet for ${season}`)
+  }
+  if (regular.length !== expectedTeamCount) {
+    throw new Error(`NFL regular-season standings returned ${regular.length} teams; expected ${expectedTeamCount}`)
+  }
+
+  const regularTeamIds = new Set(regular.map((standing) => standing.TeamID))
+  const unknownPostseason = postseason.find((standing) => (
+    !regularTeamIds.has(standing.TeamID)
+    && standing.Wins + standing.Losses + (standing.Ties ?? 0) > 0
+  ))
+  if (unknownPostseason) {
+    throw new Error(`NFL postseason standings contained unknown team ${unknownPostseason.Team || unknownPostseason.Key}`)
+  }
+
+  const combined = combineRegularAndPostseasonStandings(regular, postseason)
+  const implausible = combined.find((standing) => (
+    standing.Wins + standing.Losses + (standing.Ties ?? 0) > 25
+  ))
+  if (implausible) {
+    throw new Error(`NFL standings contained an implausible record for ${implausible.Team || implausible.Key}`)
+  }
+  return combined
+}
+
+/**
+ * College records are published as separate regular-season and postseason
+ * TeamSeason feeds. Validate both snapshots before combining them so a partial
+ * or malformed provider response can never overwrite a season.
+ */
+export function validateAndCombineCollegeStandings(
+  season: number,
+  regular: SportsDataStanding[],
+  postseason: SportsDataStanding[],
+  expectedTeamRange: readonly [number, number] = [120, 160],
+): CombinedStanding[] {
+  validateStandingRows('College regular-season standings', season, regular)
+  validateStandingRows('College postseason standings', season, postseason)
+  const [minimumTeams, maximumTeams] = expectedTeamRange
+  if (regular.length < minimumTeams || regular.length > maximumTeams) {
+    throw new Error(
+      `College regular-season standings returned ${regular.length} teams; expected ${minimumTeams}-${maximumTeams}`,
+    )
+  }
+
+  const regularTeamIds = new Set(regular.map((standing) => standing.TeamID))
+  const unknownPostseason = postseason.find((standing) => !regularTeamIds.has(standing.TeamID))
+  if (unknownPostseason) {
+    throw new Error(
+      `College postseason standings contained unknown team ${unknownPostseason.Team || unknownPostseason.Key}`,
+    )
+  }
+
+  const combined = combineRegularAndPostseasonStandings(regular, postseason)
+  const implausible = combined.find((standing) => (
+    standing.Wins + standing.Losses + (standing.Ties ?? 0) > 25
+  ))
+  if (implausible) {
+    throw new Error(`College standings contained an implausible record for ${implausible.Team || implausible.Key}`)
+  }
+  return combined
+}
+
 export function combineRegularAndPostseasonStandings(
   regular: SportsDataStanding[],
   postseason: SportsDataStanding[],

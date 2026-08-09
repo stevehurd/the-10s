@@ -85,6 +85,9 @@ export default async function AdminPage() {
               <ActionRow done={Boolean(season && submitted === season.participants.length && season.participants.length > 0)} href={season ? `/admin/seasons/${season.id}/setup` : '/admin/seasons'} label="Collect every Keep/Release submission" />
               <ActionRow done={Boolean(season && unresolvedEligibility === 0 && season.teamEligibility.length > 0)} href={season ? `/admin/seasons/${season.id}/eligibility` : '/admin/seasons'} label="Approve the season's FBS team pool" />
               <ActionRow done={Boolean(latestDraft)} href="/admin/draft" label="Create and run a rehearsal draft" />
+              {season && (season.status === 'ACTIVE' || season.status === 'FINALIZED') ? (
+                <ActionRow done={season.status === 'FINALIZED'} href={`/admin/seasons/${season.id}/standings`} label="Review and synchronize season standings" />
+              ) : null}
             </div>
           </section>
 

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   // Vercel uses Supabase's transaction pooler at runtime. Prisma migrations
   // use the session/direct connection so schema changes are never attempted
   // through a transaction-pooling connection.
@@ -14,16 +14,16 @@ datasource db {
 // Authentication identities are owned by Supabase Auth. This profile stores
 // application data and links to auth.users through authUserId.
 model User {
-  id                         String    @id @default(cuid())
-  authUserId                 String?   @unique @map("auth_user_id")
-  email                      String?   @unique
-  name                       String
-  invitationSentAt           DateTime? @map("invitation_sent_at")
-  invitationFailedAt         DateTime? @map("invitation_failed_at")
-  invitationClaimedAt        DateTime? @map("invitation_claimed_at")
-  invitationSendAttempts     Int       @default(0) @map("invitation_send_attempts")
-  createdAt                  DateTime  @default(now()) @map("created_at")
-  updatedAt                  DateTime  @updatedAt @map("updated_at")
+  id                     String    @id @default(cuid())
+  authUserId             String?   @unique @map("auth_user_id")
+  email                  String?   @unique
+  name                   String
+  invitationSentAt       DateTime? @map("invitation_sent_at")
+  invitationFailedAt     DateTime? @map("invitation_failed_at")
+  invitationClaimedAt    DateTime? @map("invitation_claimed_at")
+  invitationSendAttempts Int       @default(0) @map("invitation_send_attempts")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   // Legacy 2025 selections retained until the verified data migration.
   drafts Draft[]
@@ -33,6 +33,7 @@ model User {
   retentionDecisions   RosterSlot[]            @relation("RetentionDecidedBy")
   selectionsMade       DraftSelection[]        @relation("SelectionPickedBy")
   eligibilityApprovals SeasonTeamEligibility[] @relation("EligibilityApprovedBy")
+  standingsSyncRuns    StandingsSyncRun[]      @relation("StandingsSyncRequestedBy")
   auditEvents          AuditEvent[]            @relation("AuditActor")
 
   @@map("users")
@@ -134,17 +135,18 @@ model Season {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  pool            Pool?                   @relation(fields: [poolId], references: [id], onDelete: Restrict)
-  previousSeason  Season?                 @relation("SeasonPredecessor", fields: [previousSeasonId], references: [id], onDelete: SetNull)
-  nextSeasons     Season[]                @relation("SeasonPredecessor")
-  drafts          Draft[]
-  games           Game[]
-  participants    SeasonParticipant[]
-  teamRecords     TeamSeasonRecord[]
-  teamEligibility SeasonTeamEligibility[]
-  rosterSlots     RosterSlot[]
-  draftSessions   DraftSession[]
-  auditEvents     AuditEvent[]
+  pool              Pool?                   @relation(fields: [poolId], references: [id], onDelete: Restrict)
+  previousSeason    Season?                 @relation("SeasonPredecessor", fields: [previousSeasonId], references: [id], onDelete: SetNull)
+  nextSeasons       Season[]                @relation("SeasonPredecessor")
+  drafts            Draft[]
+  games             Game[]
+  participants      SeasonParticipant[]
+  teamRecords       TeamSeasonRecord[]
+  teamEligibility   SeasonTeamEligibility[]
+  rosterSlots       RosterSlot[]
+  draftSessions     DraftSession[]
+  standingsSyncRuns StandingsSyncRun[]
+  auditEvents       AuditEvent[]
 
   @@unique([poolId, year])
   @@index([status])
@@ -206,6 +208,32 @@ model TeamSeasonRecord {
   @@unique([seasonId, teamId])
   @@index([teamId])
   @@map("team_season_records")
+}
+
+// A durable, commissioner-visible record of each SportsDataIO synchronization.
+// Errors and summaries intentionally exclude credentials and raw provider payloads.
+model StandingsSyncRun {
+  id                String    @id @default(cuid())
+  seasonId          String    @map("season_id")
+  requestedByUserId String?   @map("requested_by_user_id")
+  requestedLeague   String    @map("requested_league")
+  trigger           String    @default("MANUAL")
+  status            String    @default("RUNNING")
+  updatedTeams      Int       @default(0) @map("updated_teams")
+  nflRecords        Int       @default(0) @map("nfl_records")
+  collegeRecords    Int       @default(0) @map("college_records")
+  messages          Json?
+  errors            Json?
+  startedAt         DateTime  @default(now()) @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  season      Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  requestedBy User?  @relation("StandingsSyncRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([seasonId, startedAt])
+  @@index([status, startedAt])
+  @@map("standings_sync_runs")
 }
 
 model SeasonTeamEligibility {

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No active season is configured' }, { status: 409 })
     }
 
-    const result = await syncSeasonStandings(season.id, 'BOTH')
+    const result = await syncSeasonStandings(season.id, 'BOTH', { trigger: 'CRON' })
     return NextResponse.json({
       success: result.errors.length === 0,
       season: season.year,

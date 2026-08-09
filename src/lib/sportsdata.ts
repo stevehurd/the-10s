@@ -1,12 +1,12 @@
 import {
-  calculateCollegeStandingsFromGames,
   type CombinedStanding,
-  type CollegeStandingTeam,
+  validateAndCombineCollegeStandings,
 } from './standings-calculation.ts'
 
 // SportsData.IO API integration
 const SPORTSDATA_API_KEY = process.env.SPORTSDATA_API_KEY
 const BASE_URL = 'https://api.sportsdata.io/v3'
+const REQUEST_TIMEOUT_MS = 20_000
 
 if (!SPORTSDATA_API_KEY) {
   console.warn('SPORTSDATA_API_KEY not set in environment variables')
@@ -46,6 +46,11 @@ export interface SportsDataTeam {
   SecondaryColor: string
   TertiaryColor?: string
   LogoUrl: string
+  Wins?: number | null
+  Losses?: number | null
+  ConferenceWins?: number | null
+  ConferenceLosses?: number | null
+  RankSeason?: number | null
 }
 
 export interface SportsDataStanding {
@@ -77,22 +82,25 @@ export async function fetchNFLStandings(season: number = 2025): Promise<SportsDa
   console.log('Fetching NFL standings from:', url)
 
   const response = await fetch(url, {
+    cache: 'no-store',
     headers: {
       'Ocp-Apim-Subscription-Key': SPORTSDATA_API_KEY,
       'Accept': 'application/json'
-    }
+    },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
 
   if (!response.ok) {
     throw new Error(`Failed to fetch NFL standings: ${response.status} ${response.statusText}`)
   }
 
-  const standings = await response.json()
+  const standings: unknown = await response.json()
+  if (!Array.isArray(standings)) throw new Error('NFL standings returned an invalid payload')
 
   // Return actual standings data without modification
 
 
-  return standings
+  return standings as SportsDataStanding[]
 }
 
 // NFL Postseason Standings API calls
@@ -106,10 +114,12 @@ export async function fetchNFLPostseasonStandings(season: number = 2025): Promis
   console.log('Fetching NFL postseason standings from:', url)
 
   const response = await fetch(url, {
+    cache: 'no-store',
     headers: {
       'Ocp-Apim-Subscription-Key': SPORTSDATA_API_KEY,
       'Accept': 'application/json'
-    }
+    },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
 
   if (!response.ok) {
@@ -121,44 +131,66 @@ export async function fetchNFLPostseasonStandings(season: number = 2025): Promis
     throw new Error(`Failed to fetch NFL postseason standings: ${response.status} ${response.statusText}`)
   }
 
-  const standings = await response.json()
+  const standings: unknown = await response.json()
+  if (!Array.isArray(standings)) throw new Error('NFL postseason standings returned an invalid payload')
 
-  return standings
+  return standings as SportsDataStanding[]
 }
 
-// College Football League Hierarchy API calls (includes standings data)
+// College Football Team Season Stats & Standings API calls
 export async function fetchCollegeStandings(season: number = 2025): Promise<CombinedStanding[]> {
   if (!SPORTSDATA_API_KEY) {
     throw new Error('SportsData.IO API key not configured')
   }
 
-  console.log(`Fetching college ${season} schedule and current FBS hierarchy from SportsDataIO...`)
-  const [conferences, games] = await Promise.all([
-    fetchSportsDataJson<Array<{ Teams?: CollegeStandingTeam[] }>>('/cfb/scores/json/LeagueHierarchy', 'college hierarchy'),
-    fetchSportsDataJson<SportsDataGame[]>(`/cfb/scores/json/Schedules/${season}`, `college ${season} schedule`),
-  ])
-  const teams = conferences.flatMap((conference) => conference.Teams ?? []).filter((team) => team.Active !== false)
+  console.log(`Fetching college ${season} aggregate standings from SportsDataIO...`)
+  const conferences = await fetchSportsDataJson<Array<{ Teams?: SportsDataTeam[] }>>(
+    '/cfb/scores/json/LeagueHierarchy',
+    'college hierarchy',
+  )
+  const teams = conferences
+    .flatMap((conference) => conference.Teams ?? [])
+    .filter((team) => team.Active !== false)
   if (teams.length < 120 || teams.length > 160) {
     throw new Error(`SportsDataIO returned an implausible active FBS field (${teams.length} teams); no standings were changed`)
   }
-  if (games.length < 500 || games.length > 2000) {
-    throw new Error(`SportsDataIO returned an implausible ${season} college schedule (${games.length} games); no standings were changed`)
-  }
-  return calculateCollegeStandingsFromGames(season, teams, games)
+  const aggregate = teams.map((team): SportsDataStanding => {
+    return {
+      Season: season,
+      SeasonType: 1,
+      TeamID: team.TeamID,
+      GlobalTeamID: team.TeamID,
+      Key: team.Key,
+      Name: team.Name || team.School || team.Key,
+      Team: [team.School, team.Name].filter(Boolean).join(' ') || team.Key,
+      Wins: team.Wins ?? 0,
+      Losses: team.Losses ?? 0,
+      Ties: 0,
+      ConferenceWins: team.ConferenceWins ?? 0,
+      ConferenceLosses: team.ConferenceLosses ?? 0,
+    }
+  })
+  return validateAndCombineCollegeStandings(season, aggregate, [])
 }
 
 async function fetchSportsDataJson<T>(path: string, label: string): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
+    cache: 'no-store',
     headers: {
       'Ocp-Apim-Subscription-Key': SPORTSDATA_API_KEY!,
       'Accept': 'application/json',
     },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
   if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(`${label} is not available from the configured SportsDataIO feed`)
+    }
     const entitlement = response.status === 401 || response.status === 403
       ? ' The configured SportsDataIO subscription may not include this feed.'
       : ''
-    throw new Error(`Failed to fetch ${label}: ${response.status} ${response.statusText}.${entitlement}`)
+    const status = response.statusText ? `${response.status} ${response.statusText}` : response.status.toString()
+    throw new Error(`Failed to fetch ${label}: ${status}.${entitlement}`)
   }
   return response.json() as Promise<T>
 }

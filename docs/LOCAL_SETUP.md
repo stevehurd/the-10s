@@ -64,6 +64,10 @@ op run --env-file=.env.op -- npm run dev
 
 The SportsDataIO seed refuses incomplete feeds before opening its database transaction. It expects 32 active NFL teams and 120-160 active FBS teams. It resets only the pool with slug `the-10s-development`; never use the command with production database URLs.
 
+After the development migration is applied, commissioners can use **Season → Standings data** to run and inspect standings synchronization. Use a mutable synthetic season for manual tests. Each attempt is retained in `standings_sync_runs`; failures store only sanitized messages, never API keys or raw SportsDataIO payloads.
+
+For a finalized synthetic season, use **Validate against SportsDataIO** instead of reopening it. Validation fetches the historical feeds and compares every calculated W-L-T total with the preserved `TeamSeasonRecord`; it writes only the validation report and audit event, never team records or final standings.
+
 The public Supabase URL and publishable key are intentionally browser-safe. Database URLs, SportsDataIO keys, cron secrets, SMTP passwords, and any Supabase secret/service-role key are server-only. The application does not require a service-role key.
 
 Invitation delivery stays disabled unless all four optional invitation fields

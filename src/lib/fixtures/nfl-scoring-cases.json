@@ -1,0 +1,78 @@
+{
+  "season": 2025,
+  "expectedTeamCount": 3,
+  "regular": [
+    {
+      "Season": 2025,
+      "SeasonType": 1,
+      "TeamID": 11,
+      "GlobalTeamID": 1011,
+      "Key": "AAA",
+      "Name": "Alphas",
+      "Team": "Alpha City Alphas",
+      "Wins": 12,
+      "Losses": 5,
+      "Ties": 0,
+      "ConferenceWins": 8,
+      "ConferenceLosses": 4
+    },
+    {
+      "Season": 2025,
+      "SeasonType": 1,
+      "TeamID": 12,
+      "GlobalTeamID": 1012,
+      "Key": "BBB",
+      "Name": "Bruisers",
+      "Team": "Bravo Bruisers",
+      "Wins": 10,
+      "Losses": 6,
+      "Ties": 1,
+      "ConferenceWins": 7,
+      "ConferenceLosses": 5
+    },
+    {
+      "Season": 2025,
+      "SeasonType": 1,
+      "TeamID": 13,
+      "GlobalTeamID": 1013,
+      "Key": "CCC",
+      "Name": "Captains",
+      "Team": "Charlie Captains",
+      "Wins": 8,
+      "Losses": 9,
+      "Ties": 0,
+      "ConferenceWins": 5,
+      "ConferenceLosses": 7
+    }
+  ],
+  "postseason": [
+    {
+      "Season": 2025,
+      "SeasonType": 3,
+      "TeamID": 11,
+      "GlobalTeamID": 1011,
+      "Key": "AAA",
+      "Name": "Alphas",
+      "Team": "Alpha City Alphas",
+      "Wins": 3,
+      "Losses": 1,
+      "Ties": 0,
+      "ConferenceWins": 0,
+      "ConferenceLosses": 0
+    },
+    {
+      "Season": 2025,
+      "SeasonType": 3,
+      "TeamID": 12,
+      "GlobalTeamID": 1012,
+      "Key": "BBB",
+      "Name": "Bruisers",
+      "Team": "Bravo Bruisers",
+      "Wins": 0,
+      "Losses": 1,
+      "Ties": 0,
+      "ConferenceWins": 0,
+      "ConferenceLosses": 0
+    }
+  ]
+}

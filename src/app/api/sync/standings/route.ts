@@ -28,7 +28,10 @@ export async function POST(request: Request) {
     const authorization = await authorizeApi('COMMISSIONER', season.poolId)
     if (!authorization.authorized) return authorization.response
 
-    const result = await syncSeasonStandings(season.id, league)
+    const result = await syncSeasonStandings(season.id, league, {
+      actorUserId: authorization.appUser.id,
+      trigger: 'MANUAL',
+    })
     return NextResponse.json({
       success: result.errors.length === 0,
       season: season.year,
@@ -36,6 +39,12 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('Standings sync failed:', error)
-    return NextResponse.json({ error: 'Standings sync failed' }, { status: 500 })
+    const message = error instanceof Error && [
+      'Completed season standings are frozen',
+      'Season not found',
+    ].includes(error.message)
+      ? error.message
+      : 'Standings sync failed'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
