@@ -102,6 +102,8 @@ export default function DraftRoom({
   const [conference, setConference] = useState('ALL')
   const [includeUnavailable, setIncludeUnavailable] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
+  const [starredTeamIds, setStarredTeamIds] = useState<Set<string>>(() => new Set())
+  const [draftPrepStorageReady, setDraftPrepStorageReady] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [controlPending, setControlPending] = useState(false)
   const [activeTab, setActiveTab] = useState<DraftTab>('PICK')
@@ -112,6 +114,7 @@ export default function DraftRoom({
     revision: number
   } | null>(null)
   const autopickRequestedForTurn = useRef<string | null>(null)
+  const draftPrepStorageReadyRef = useRef<string | null>(null)
   const draftLoadInFlight = useRef<Promise<void> | null>(null)
 
   const loadDraft = useCallback(async (quiet = false, refreshAfterInFlight = false) => {
@@ -126,6 +129,35 @@ export default function DraftRoom({
         const response = await fetch(`/api/draft-sessions/${sessionId}`, { cache: 'no-store' })
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.error || 'Unable to load the draft')
+        const incomingDraftPrepStorageKey = payload.viewerParticipantId
+          ? `draft-prep:${sessionId}:${payload.viewerParticipantId}`
+          : null
+        if (
+          incomingDraftPrepStorageKey &&
+          draftPrepStorageReadyRef.current !== incomingDraftPrepStorageKey
+        ) {
+          try {
+            const stored = window.localStorage.getItem(incomingDraftPrepStorageKey)
+            if (stored) {
+              const parsed = JSON.parse(stored) as { starredTeamIds?: unknown; queuedTeamId?: unknown }
+              if (Array.isArray(parsed.starredTeamIds)) {
+                setStarredTeamIds(new Set(
+                  parsed.starredTeamIds.filter((id): id is string => typeof id === 'string'),
+                ))
+              }
+              if (typeof parsed.queuedTeamId === 'string') {
+                const queuedTeam = [...payload.availableTeams, ...payload.unavailableTeams]
+                  .find((team: Team) => team.id === parsed.queuedTeamId)
+                if (queuedTeam) setSelectedTeam(queuedTeam)
+              }
+            }
+          } catch {
+            // Private draft prep should never prevent someone from using the room.
+          } finally {
+            draftPrepStorageReadyRef.current = incomingDraftPrepStorageKey
+            setDraftPrepStorageReady(incomingDraftPrepStorageKey)
+          }
+        }
         const incomingCurrentTurn = payload.turns.find(
           (turn: Turn) => turn.id === payload.currentTurnId,
         )
@@ -225,6 +257,21 @@ export default function DraftRoom({
       state.session.status === 'LIVE' &&
       (currentTurn.seasonParticipantId === state.viewerParticipantId || state.viewerIsCommissioner),
   )
+  const draftPrepStorageKey = state?.viewerParticipantId
+    ? `draft-prep:${sessionId}:${state.viewerParticipantId}`
+    : null
+
+  useEffect(() => {
+    if (!draftPrepStorageKey || draftPrepStorageReady !== draftPrepStorageKey) return
+    try {
+      window.localStorage.setItem(draftPrepStorageKey, JSON.stringify({
+        starredTeamIds: [...starredTeamIds],
+        queuedTeamId: selectedTeam?.id ?? null,
+      }))
+    } catch {
+      // Draft prep remains usable even when browser storage is unavailable.
+    }
+  }, [draftPrepStorageKey, draftPrepStorageReady, selectedTeam?.id, starredTeamIds])
 
   const remainingSeconds = displayedDraftSeconds(
     currentTurn?.deadlineAt ?? null,
@@ -283,11 +330,20 @@ export default function DraftRoom({
       const matchesLeague = league === 'ALL' || team.league === league
       const matchesConference = conference === 'ALL' || team.conference === conference
       return matchesSearch && matchesLeague && matchesConference
+    }).sort((left, right) => Number(starredTeamIds.has(right.id)) - Number(starredTeamIds.has(left.id)))
+  }, [conference, includeUnavailable, league, search, starredTeamIds, state])
+
+  function toggleStarredTeam(teamId: string) {
+    setStarredTeamIds((current) => {
+      const next = new Set(current)
+      if (next.has(teamId)) next.delete(teamId)
+      else next.add(teamId)
+      return next
     })
-  }, [conference, includeUnavailable, league, search, state])
+  }
 
   async function submitSelection() {
-    if (!selectedTeam || !state) return
+    if (!selectedTeam || !state || !canPick) return
     if (demo) {
       const activeTurnIndex = state.turns.findIndex((turn) => turn.id === state.currentTurnId)
       const activeTurn = state.turns[activeTurnIndex]
@@ -557,6 +613,12 @@ export default function DraftRoom({
         </div>
       ) : null}
 
+      {viewerParticipant && currentTurn?.seasonParticipantId !== state.viewerParticipantId && state.session.status === 'LIVE' ? (
+        <div className="border-b border-blue-300/20 bg-blue-300/10 px-4 py-3 text-center text-sm font-semibold text-blue-100">
+          Waiting for your turn. Star teams to build a shortlist, or queue one team for your next pick.
+        </div>
+      ) : null}
+
       {error ? (
         <div className="mx-auto mt-4 max-w-[1600px] px-4">
           <p className="rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
@@ -602,10 +664,7 @@ export default function DraftRoom({
             aria-current={displayedTab === tab ? 'page' : undefined}
             className={`border-b-2 px-3 py-3 text-sm font-semibold transition ${displayedTab === tab ? 'border-orange-400 text-orange-300' : 'border-transparent text-slate-400 hover:text-white'}`}
             key={tab}
-            onClick={() => {
-              setActiveTab(tab)
-              if (tab !== 'PICK') setSelectedTeam(null)
-            }}
+            onClick={() => setActiveTab(tab)}
             type="button"
           >
             {tab === 'PICK' ? 'Make a Pick' : tab === 'ROSTERS' ? 'Final Rosters' : tab === 'BOARD' ? 'Draft Board' : 'Activity'}
@@ -623,7 +682,7 @@ export default function DraftRoom({
                 <div>
                   <h2 className="text-lg font-semibold">Available teams</h2>
                   <p className="text-sm text-slate-400">
-                    {state.availableTeams.length} teams · sorted by last season&apos;s wins
+                    {state.availableTeams.length} teams · {state.availableTeams.filter((team) => starredTeamIds.has(team.id)).length} starred · starred teams appear first
                   </p>
                 </div>
                 <label className="flex items-center gap-2 text-xs text-slate-400">
@@ -667,35 +726,59 @@ export default function DraftRoom({
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {displayedTeams.map((team) => {
                 const unavailable = Boolean(team.unavailableReason)
+                const starred = starredTeamIds.has(team.id)
+                const queued = selectedTeam?.id === team.id
                 return (
-                  <button
-                    className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${
+                  <article
+                    className={`relative flex items-center rounded-2xl border transition ${
                       unavailable
                         ? 'cursor-not-allowed border-white/5 bg-white/[0.02] opacity-55'
-                        : selectedTeam?.id === team.id
+                        : queued
                           ? 'border-blue-400 bg-blue-500/10'
                           : 'border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/10'
                     }`}
-                    disabled={unavailable || !canPick}
                     key={team.id}
-                    onClick={() => setSelectedTeam(team)}
-                    type="button"
                   >
-                    <TeamMark abbreviation={team.abbreviation} logoUrl={team.logoUrl} size="lg" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{team.name}</span>
-                      <span className="block truncate text-xs text-slate-400">
-                        {team.conference ?? team.division ?? team.league}
+                    <button
+                      aria-label={`${queued ? 'Queued' : 'Queue'} ${team.name}`}
+                      className="flex min-w-0 flex-1 items-center gap-3 p-3 pr-1 text-left disabled:cursor-not-allowed"
+                      disabled={unavailable}
+                      onClick={() => setSelectedTeam(team)}
+                      type="button"
+                    >
+                      <TeamMark abbreviation={team.abbreviation} logoUrl={team.logoUrl} size="lg" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">{team.name}</span>
+                        <span className="block truncate text-xs text-slate-400">
+                          {team.conference ?? team.division ?? team.league}
+                        </span>
+                        {team.unavailableReason ? (
+                          <span className="mt-1 block text-xs text-amber-200">{team.unavailableReason}</span>
+                        ) : queued ? (
+                          <span className="mt-1 block text-xs font-bold text-blue-300">Queued for your next pick</span>
+                        ) : null}
                       </span>
-                      {team.unavailableReason ? (
-                        <span className="mt-1 block text-xs text-amber-200">{team.unavailableReason}</span>
-                      ) : null}
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block text-lg font-black tabular-nums">{recordLabel(team.priorRecord)}</span>
-                      <span className="text-[10px] uppercase tracking-wider text-slate-500">Prior W-L-T</span>
-                    </span>
-                  </button>
+                      <span className="shrink-0 text-right">
+                        <span className="block text-lg font-black tabular-nums">{recordLabel(team.priorRecord)}</span>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-500">Prior W-L-T</span>
+                      </span>
+                    </button>
+                    <button
+                      aria-label={`${starred ? 'Unstar' : 'Star'} ${team.name}`}
+                      aria-pressed={starred}
+                      className={`m-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl border text-xl transition ${
+                        starred
+                          ? 'border-yellow-300/50 bg-yellow-300/15 text-yellow-300'
+                          : 'border-white/10 bg-slate-950/50 text-slate-500 hover:border-yellow-300/40 hover:text-yellow-300'
+                      }`}
+                      disabled={unavailable}
+                      onClick={() => toggleStarredTeam(team.id)}
+                      title={starred ? 'Remove from shortlist' : 'Add to shortlist'}
+                      type="button"
+                    >
+                      <span aria-hidden="true">{starred ? '★' : '☆'}</span>
+                    </button>
+                  </article>
                 )
               })}
             </div>
@@ -815,17 +898,28 @@ export default function DraftRoom({
             <div className="flex min-w-0 items-center gap-3">
               <TeamMark abbreviation={selectedTeam.abbreviation} logoUrl={selectedTeam.logoUrl} size="lg" />
               <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wider text-orange-300">Confirm selection</p>
+              <p className="text-xs uppercase tracking-wider text-orange-300">
+                {canPick ? 'Ready to draft' : 'Queued for your next pick'}
+              </p>
               <p className="truncate text-lg font-semibold">{selectedTeam.name}</p>
-              <p className="text-sm text-slate-400">Prior record: {recordLabel(selectedTeam.priorRecord)}</p>
+              <p className="text-sm text-slate-400">
+                {state.availableTeams.some((team) => team.id === selectedTeam.id)
+                  ? `Prior record: ${recordLabel(selectedTeam.priorRecord)}`
+                  : 'This team is no longer available. Choose another team.'}
+              </p>
               </div>
             </div>
             <div className="flex gap-2">
               <button className="rounded-xl px-4 py-3 text-sm font-semibold text-slate-300" onClick={() => setSelectedTeam(null)} type="button">
-                Cancel
+                Clear queue
               </button>
-              <button className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-white disabled:opacity-60" disabled={submitting} onClick={submitSelection} type="button">
-                {submitting ? 'Submitting…' : 'Confirm pick'}
+              <button
+                className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={submitting || !canPick || !state.availableTeams.some((team) => team.id === selectedTeam.id)}
+                onClick={submitSelection}
+                type="button"
+              >
+                {submitting ? 'Submitting…' : canPick ? 'Draft this team' : 'Waiting for your turn'}
               </button>
             </div>
           </div>
