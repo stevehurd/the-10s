@@ -87,7 +87,7 @@ export default function StandingsSyncControls({
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Manual update</p>
           <h2 className="mt-2 text-xl font-black">Pull current records</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            NFL totals combine regular and postseason standings. College totals use SportsDataIO's official aggregate standings for the active season.
+            NFL totals combine regular and postseason standings. College totals use SportsDataIO&apos;s official aggregate standings for the active season.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

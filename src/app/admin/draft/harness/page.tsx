@@ -67,8 +67,8 @@ export default async function DraftHarnessPage() {
         <div>
           <Link className="text-sm font-bold text-blue-600 hover:underline" href="/admin/draft">← Draft control</Link>
           <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-orange-600">Development tools</p>
-          <h1 className="mt-2 text-3xl font-black">Draft Test Lab</h1>
-          <p className="mt-2 max-w-3xl text-slate-500">Run real database-backed multi-client scenarios against isolated rehearsal drafts. Official rosters are fingerprinted and verified unchanged.</p>
+          <h1 className="mt-2 text-3xl font-black">Draft rehearsal</h1>
+          <p className="mt-2 max-w-3xl text-slate-500">Walk through the draft as a commissioner, then use the automated safety checks to verify concurrency, roster quotas, and official-data isolation.</p>
         </div>
         <HarnessLab seasons={data} />
       </div>
