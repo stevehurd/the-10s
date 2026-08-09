@@ -53,6 +53,19 @@ export function shouldRunServerAutopick(input: {
   )
 }
 
+export function canActorMakeDraftSelection(input: {
+  actorUserId: string | null
+  onClockUserId: string
+  actorIsCommissioner: boolean
+  selectionType: 'MANUAL' | 'COMMISSIONER' | 'AUTOPICK'
+}) {
+  return Boolean(
+    input.selectionType === 'AUTOPICK' ||
+      input.actorIsCommissioner ||
+      (input.actorUserId && input.actorUserId === input.onClockUserId),
+  )
+}
+
 export interface RosterSlot {
   number: number
   state: SlotState

@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { serverDraftDeadline } from './clock'
 import {
+  canActorMakeDraftSelection,
   canSelectLeague,
   generateDraftTurns,
   planLastPickUndo,
@@ -559,19 +560,6 @@ export async function makeDraftSelection(input: MakeSelectionInput) {
         throw new DraftRuleError('The draft is not accepting picks', 'DRAFT_NOT_LIVE', 409)
       }
 
-      const claimed = await tx.draftSession.updateMany({
-        where: {
-          id: session.id,
-          status: 'LIVE',
-          revision: input.expectedRevision,
-          currentTurnIndex: session.currentTurnIndex,
-        },
-        data: { revision: { increment: 1 } },
-      })
-      if (claimed.count !== 1) {
-        throw new DraftRuleError('The draft advanced. Refresh before picking.', 'STALE_DRAFT', 409)
-      }
-
       const turn = await tx.draftTurn.findUnique({
         where: {
           draftSessionId_overallIndex: {
@@ -586,12 +574,26 @@ export async function makeDraftSelection(input: MakeSelectionInput) {
       })
       if (!turn) throw new DraftRuleError('Current draft turn not found', 'INVALID_TURN', 409)
       const requestedSelectionType = input.selectionType ?? 'MANUAL'
-      if (
-        requestedSelectionType !== 'AUTOPICK' &&
-        !input.actorIsCommissioner &&
-        turn.seasonParticipant.userId !== input.actorUserId
-      ) {
+      if (!canActorMakeDraftSelection({
+        actorUserId: input.actorUserId,
+        onClockUserId: turn.seasonParticipant.userId,
+        actorIsCommissioner: input.actorIsCommissioner,
+        selectionType: requestedSelectionType,
+      })) {
         throw new DraftRuleError('It is not your turn', 'NOT_YOUR_TURN', 403)
+      }
+
+      const claimed = await tx.draftSession.updateMany({
+        where: {
+          id: session.id,
+          status: 'LIVE',
+          revision: input.expectedRevision,
+          currentTurnIndex: session.currentTurnIndex,
+        },
+        data: { revision: { increment: 1 } },
+      })
+      if (claimed.count !== 1) {
+        throw new DraftRuleError('The draft advanced. Refresh before picking.', 'STALE_DRAFT', 409)
       }
 
       const team = await tx.team.findUnique({ where: { id: input.teamId } })

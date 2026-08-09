@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  canActorMakeDraftSelection,
   canSelectLeague,
   generateDraftTurns,
   LEAGUES,
@@ -17,6 +18,39 @@ import {
   type League,
   type RosterSlot,
 } from './engine.ts'
+
+test('only the on-clock player, a commissioner, or the server autopick may select', () => {
+  assert.equal(canActorMakeDraftSelection({
+    actorUserId: 'on-clock',
+    onClockUserId: 'on-clock',
+    actorIsCommissioner: false,
+    selectionType: 'MANUAL',
+  }), true)
+  assert.equal(canActorMakeDraftSelection({
+    actorUserId: 'other-member',
+    onClockUserId: 'on-clock',
+    actorIsCommissioner: false,
+    selectionType: 'MANUAL',
+  }), false)
+  assert.equal(canActorMakeDraftSelection({
+    actorUserId: 'commissioner',
+    onClockUserId: 'on-clock',
+    actorIsCommissioner: true,
+    selectionType: 'COMMISSIONER',
+  }), true)
+  assert.equal(canActorMakeDraftSelection({
+    actorUserId: null,
+    onClockUserId: 'on-clock',
+    actorIsCommissioner: true,
+    selectionType: 'AUTOPICK',
+  }), true)
+  assert.equal(canActorMakeDraftSelection({
+    actorUserId: null,
+    onClockUserId: 'on-clock',
+    actorIsCommissioner: false,
+    selectionType: 'MANUAL',
+  }), false)
+})
 
 test('server autopick only claims expired active turns in an official live draft', () => {
   const now = new Date('2026-08-08T12:00:00.000Z')
