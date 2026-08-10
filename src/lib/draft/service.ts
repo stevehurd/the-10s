@@ -1,6 +1,10 @@
 import { Prisma } from '@prisma/client'
 
 import { prisma } from '@/lib/db'
+import {
+  isPrismaWriteConflict,
+  retryPrismaWriteConflict,
+} from '@/lib/db/write-conflict-retry'
 import { serverDraftDeadline } from './clock'
 import {
   canActorMakeDraftSelection,
@@ -546,7 +550,7 @@ export async function undoLastDraftSelection(sessionId: string, actorUserId: str
 }
 
 export async function makeDraftSelection(input: MakeSelectionInput) {
-  const result = await prisma.$transaction(
+  const executeSelection = () => prisma.$transaction(
     async (tx) => {
       const session = await tx.draftSession.findUnique({
         where: { id: input.draftSessionId },
@@ -762,6 +766,16 @@ export async function makeDraftSelection(input: MakeSelectionInput) {
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   )
+  const result = await retryPrismaWriteConflict(executeSelection).catch((error: unknown) => {
+    if (isPrismaWriteConflict(error)) {
+      throw new DraftRuleError(
+        'The draft advanced while this pick was being saved. Refresh before picking again.',
+        'STALE_DRAFT',
+        409,
+      )
+    }
+    throw error
+  })
 
   let nextTurnDeadlineAt: Date | null = null
   if (result.nextTurnId) {

@@ -30,7 +30,7 @@ repository.
 - [ ] Waiting member cannot submit another participant's pick
 - [ ] Commissioner can start, pause, resume, and pick for a participant
 - [ ] Every new turn receives the full configured clock
-- [ ] Expired turn produces the correct quota-aware autopick
+- [ ] Expired turn produces one correct quota-aware autopick when browser and worker requests race
 - [ ] Refresh/reconnect reconstructs canonical draft state
 - [ ] Simultaneous selection attempts commit exactly one pick
 - [ ] Undo restores the correct turn and team availability

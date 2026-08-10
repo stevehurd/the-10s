@@ -203,7 +203,16 @@ export async function runLifecycleHarness(sessionId: string, actorUserId: string
     where: { id: activeTurn.id },
     data: { deadlineAt: new Date(Date.now() - 1_000) },
   })
-  await autopickExpiredTurn(sessionId)
+  const autopickAttempts = await Promise.allSettled([
+    autopickExpiredTurn(sessionId),
+    autopickExpiredTurn(sessionId),
+  ])
+  const autopickWinners = autopickAttempts.filter((attempt) => attempt.status === 'fulfilled')
+  const harmlessAutopickLosers = autopickAttempts.filter(
+    (attempt) => attempt.status === 'rejected'
+      && attempt.reason instanceof DraftRuleError
+      && ['CLOCK_NOT_EXPIRED', 'STALE_DRAFT'].includes(attempt.reason.code),
+  )
 
   const reconnectOne = await getDraftRoomState(sessionId, actorUserId)
   const reconnectTwo = await getDraftRoomState(sessionId, actorUserId)
@@ -214,6 +223,8 @@ export async function runLifecycleHarness(sessionId: string, actorUserId: string
   const checks: HarnessCheck[] = [
     { label: 'Pause persisted on the canonical session', passed: paused.status === 'PAUSED' },
     { label: 'Expired clock produced one autopick', passed: reconnectOne.turns.filter((turn) => turn.selection).length === beforeSelections + 1 },
+    { label: 'Competing autopick requests committed exactly one pick', passed: autopickWinners.length === 1 },
+    { label: 'The losing autopick resolved as a harmless stale request', passed: harmlessAutopickLosers.length === 1 },
     {
       label: 'Two reconnects reconstructed the same state',
       passed: reconnectOne.session.revision === reconnectTwo.session.revision && reconnectOne.currentTurnId === reconnectTwo.currentTurnId,

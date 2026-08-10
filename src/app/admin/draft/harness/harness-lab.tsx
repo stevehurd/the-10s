@@ -48,7 +48,7 @@ const HUMAN_REHEARSAL_STEPS = [
   { id: 'second-window', label: 'Open the room in a second window and confirm both views show the same turn.' },
   { id: 'manual-pick', label: 'Make a manual pick and confirm the board, activity, and roster update in both windows.' },
   { id: 'pause-resume', label: 'Pause and resume the draft; confirm picks are blocked while paused.' },
-  { id: 'autopick', label: 'Let the 10-second clock expire and confirm an eligible team is autopicked.' },
+  { id: 'autopick', label: 'Let the 10-second clock expire and confirm exactly one eligible team is autopicked.' },
   { id: 'undo', label: 'Undo the latest pick and confirm the same turn becomes active again.' },
   { id: 'mobile', label: 'Narrow one window to phone width and complete a pick without using the desktop board.' },
   { id: 'video', label: 'If a video URL is configured, confirm the header icon opens the correct call.' },
