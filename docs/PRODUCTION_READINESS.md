@@ -98,6 +98,7 @@ accepted release risk at the final GO/NO-GO decision.
 - [ ] `mail.league-house.com` passes Resend SPF and DKIM verification
 - [ ] Authentication email open/link tracking is disabled
 - [x] Resend SMTP works with development Supabase
+- [x] Resend SMTP is configured in production Supabase
 - [x] Supabase email template matches the chosen passwordless-link flow
 - [ ] Production invitation delivery remains disabled
 
@@ -168,5 +169,5 @@ Notes must contain no credentials or private member information:
 - Production Supabase Auth Site URL: `https://league-house.com`
 - Production Supabase Auth redirect allowlist: `https://league-house.com/auth/confirm`
 - Production Auth provider settings match the tested development flow: email enabled, phone disabled, signups and email confirmation enabled
-- Production custom SMTP: not yet configured
+- Production custom SMTP: enabled with the expected Resend sender, host, port, username, and encrypted password; delivery test remains pending
 ```
