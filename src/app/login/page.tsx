@@ -1,12 +1,20 @@
 'use client'
 
-import { FormEvent, Suspense, useMemo, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
-import { buildEmailAuthCallbackUrl, normalizeNextPath } from '@/lib/auth/redirect'
+import {
+  EMAIL_OTP_LENGTH,
+  emailOtpErrorMessage,
+  normalizeEmail,
+  normalizeEmailOtp,
+  requestEmailOtp,
+  verifyEmailOtp,
+} from '@/lib/auth/email-otp'
+import { normalizeNextPath } from '@/lib/auth/redirect'
 import { createClient } from '@/lib/supabase/client'
 
-type Step = 'EMAIL' | 'LINK_SENT'
+type Step = 'EMAIL' | 'CODE_SENT'
 
 export default function LoginPage() {
   return (
@@ -17,6 +25,7 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = useMemo(() => createClient(), [])
   const invitedEmail = searchParams.get('invited') === 'true'
@@ -24,35 +33,77 @@ function LoginForm() {
     : ''
   const [step, setStep] = useState<Step>('EMAIL')
   const [email, setEmail] = useState(invitedEmail)
+  const [sentEmail, setSentEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [resendSeconds, setResendSeconds] = useState(0)
   const [message, setMessage] = useState<string | null>(
     searchParams.get('error') === 'invalid-code'
-      ? 'That sign-in link is invalid or has expired. Request a new one.'
+      ? 'That confirmation link is invalid or has expired. Request a new sign-in code below.'
       : null,
   )
-  const [pending, setPending] = useState(false)
+  const [pending, setPending] = useState<'request' | 'verify' | 'resend' | null>(null)
 
-  async function requestLink(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (resendSeconds <= 0) return
+    const timer = window.setTimeout(() => setResendSeconds((seconds) => Math.max(0, seconds - 1)), 1000)
+    return () => window.clearTimeout(timer)
+  }, [resendSeconds])
+
+  async function requestCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setPending(true)
+    setPending('request')
     setMessage(null)
 
-    const nextPath = normalizeNextPath(searchParams.get('next'))
+    const normalizedEmail = normalizeEmail(email)
+    const { error } = await requestEmailOtp(supabase, normalizedEmail)
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: buildEmailAuthCallbackUrl(window.location.origin, nextPath),
-      },
-    })
-
-    setPending(false)
+    setPending(null)
     if (error) {
-      setMessage(error.message)
+      setMessage(emailOtpErrorMessage(error, 'request'))
       return
     }
 
-    setStep('LINK_SENT')
+    setSentEmail(normalizedEmail)
+    setCode('')
+    setResendSeconds(30)
+    setStep('CODE_SENT')
+  }
+
+  async function verifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const normalizedCode = normalizeEmailOtp(code)
+    if (normalizedCode.length !== EMAIL_OTP_LENGTH) {
+      setMessage(`Enter the ${EMAIL_OTP_LENGTH}-digit code from your email.`)
+      return
+    }
+
+    setPending('verify')
+    setMessage(null)
+    const { error } = await verifyEmailOtp(supabase, sentEmail, normalizedCode)
+    setPending(null)
+    if (error) {
+      setMessage(emailOtpErrorMessage(error, 'verify'))
+      return
+    }
+
+    const nextPath = normalizeNextPath(searchParams.get('next'))
+    router.replace(nextPath)
+    router.refresh()
+  }
+
+  async function resendCode() {
+    setPending('resend')
+    setMessage(null)
+    const { error } = await requestEmailOtp(supabase, sentEmail)
+    setPending(null)
+    if (error) {
+      setMessage(emailOtpErrorMessage(error, 'request'))
+      return
+    }
+
+    setCode('')
+    setResendSeconds(30)
+    setMessage('A new code is on its way.')
   }
 
   return (
@@ -65,7 +116,7 @@ function LoginForm() {
             </p>
             <h1 className="text-3xl font-semibold tracking-tight">Sign in to your pool</h1>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              No password needed. We&apos;ll email you a secure, one-time sign-in link.
+              No password needed. We&apos;ll email you a secure, one-time sign-in code.
             </p>
           </div>
 
@@ -76,7 +127,7 @@ function LoginForm() {
           ) : null}
 
           {step === 'EMAIL' ? (
-            <form className="space-y-5" onSubmit={requestLink}>
+            <form className="space-y-5" onSubmit={requestCode}>
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-200">Email address</span>
                 <input
@@ -92,28 +143,69 @@ function LoginForm() {
               </label>
               <button
                 className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={pending}
+                disabled={pending !== null}
                 type="submit"
               >
-                {pending ? 'Sending…' : 'Email me a sign-in link'}
+                {pending === 'request' ? 'Sending…' : 'Email me a code'}
               </button>
             </form>
           ) : (
             <div className="space-y-5 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-5">
               <div>
-                <h2 className="text-xl font-semibold">Check your email</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">Open the secure sign-in link sent to <strong>{email.trim()}</strong>. It will return you here and sign you in.</p>
+                <h2 className="text-xl font-semibold">Enter your sign-in code</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">We sent a {EMAIL_OTP_LENGTH}-digit code to <strong>{sentEmail}</strong>.</p>
               </div>
-              <button
-                className="w-full px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200"
-                onClick={() => {
-                  setStep('EMAIL')
-                  setMessage(null)
-                }}
-                type="button"
-              >
-                Use a different email
-              </button>
+              <form className="space-y-4" onSubmit={verifyCode}>
+                <label className="block">
+                  <span className="sr-only">Six-digit sign-in code</span>
+                  <input
+                    aria-label="Six-digit sign-in code"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-4 text-center font-mono text-3xl font-bold tracking-[0.3em] outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400/10"
+                    inputMode="numeric"
+                    maxLength={EMAIL_OTP_LENGTH}
+                    minLength={EMAIL_OTP_LENGTH}
+                    onChange={(event) => setCode(normalizeEmailOtp(event.target.value))}
+                    pattern={`[0-9]{${EMAIL_OTP_LENGTH}}`}
+                    placeholder="000000"
+                    required
+                    value={code}
+                  />
+                </label>
+                <button
+                  className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={pending !== null || code.length !== EMAIL_OTP_LENGTH}
+                  type="submit"
+                >
+                  {pending === 'verify' ? 'Signing in…' : 'Sign in'}
+                </button>
+              </form>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white disabled:cursor-not-allowed disabled:text-slate-500"
+                  disabled={pending !== null || resendSeconds > 0}
+                  onClick={resendCode}
+                  type="button"
+                >
+                  {pending === 'resend'
+                    ? 'Sending…'
+                    : resendSeconds > 0
+                      ? `Resend in ${resendSeconds}s`
+                      : 'Resend code'}
+                </button>
+                <button
+                  className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white"
+                  onClick={() => {
+                    setStep('EMAIL')
+                    setCode('')
+                    setMessage(null)
+                  }}
+                  type="button"
+                >
+                  Change email
+                </button>
+              </div>
             </div>
           )}
 

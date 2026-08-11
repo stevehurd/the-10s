@@ -33,6 +33,8 @@ test('invitation email links to a prefilled passwordless login and escapes playe
   assert.equal(url.searchParams.get('invited'), 'true')
   assert.match(message.html, /&lt;Demo &amp; Player&gt;/)
   assert.doesNotMatch(message.html, /<Demo & Player>/)
+  assert.match(message.text, /one-time sign-in code/)
+  assert.doesNotMatch(message.text, /sign-in link/)
 })
 
 test('email sends are idempotent per player attempt and never expose provider errors', async () => {

@@ -236,7 +236,7 @@ otp_length = 6
 otp_expiry = 900
 
 [auth.email.template.magic_link]
-subject = "Your sign-in link for The 10's"
+subject = "{{ .Token }} is your League House sign-in code"
 content_path = "./supabase/templates/magic-link.html"
 
 # Use a production-ready SMTP server

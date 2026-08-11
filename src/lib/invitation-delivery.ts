@@ -46,8 +46,8 @@ export function buildInvitationEmail(input: { playerName: string; appUrl: string
   const safeUrl = escapeHtml(loginUrl.toString())
   return {
     subject: `You’re invited to The 10’s Football Pool`,
-    text: `Hi ${input.playerName},\n\nYour football pool profile is ready. Join the pool and sign in with ${input.email}:\n${loginUrl.toString()}\n\nNo password is required. We’ll email you a secure, one-time sign-in link.`,
-    html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#17211b"><h1 style="font-size:24px">Your football pool profile is ready</h1><p>Hi ${safeName},</p><p>You’ve been invited to join The 10’s Football Pool. Your historical teams and results are already connected to this sign-in email.</p><p><a href="${safeUrl}" style="display:inline-block;border-radius:12px;background:#c7f000;color:#17211b;font-weight:700;padding:12px 18px;text-decoration:none">Join the pool</a></p><p>No password is required. We’ll email you a secure, one-time sign-in link.</p></div>`,
+    text: `Hi ${input.playerName},\n\nYour football pool profile is ready. Join the pool and sign in with ${input.email}:\n${loginUrl.toString()}\n\nNo password is required. We’ll email you a secure, one-time sign-in code.`,
+    html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#17211b"><h1 style="font-size:24px">Your football pool profile is ready</h1><p>Hi ${safeName},</p><p>You’ve been invited to join The 10’s Football Pool. Your historical teams and results are already connected to this sign-in email.</p><p><a href="${safeUrl}" style="display:inline-block;border-radius:12px;background:#c7f000;color:#17211b;font-weight:700;padding:12px 18px;text-decoration:none">Join the pool</a></p><p>No password is required. We’ll email you a secure, one-time sign-in code.</p></div>`,
     loginUrl: loginUrl.toString(),
   }
 }
