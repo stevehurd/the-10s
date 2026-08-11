@@ -141,7 +141,7 @@ export async function createDraftSession(input: CreateDraftSessionInput) {
   })
   if (unresolvedEligibility > 0) {
     throw new DraftRuleError(
-      `${unresolvedEligibility} college teams still need eligibility review`,
+      `${unresolvedEligibility} college team pool exceptions still need review`,
       'ELIGIBILITY_REVIEW_INCOMPLETE',
     )
   }
@@ -1056,13 +1056,15 @@ export async function getDraftRoomState(draftSessionId: string, viewerUserId: st
     ...sessionSelections.map((selection) => selection.teamId),
   ])
 
-  const eligibleTeams = eligibility.map(({ team }) => ({
+  const eligibleTeams = eligibility.map((entry) => {
+    const { team } = entry
+    return {
       id: team.id,
-      name: team.name,
-      abbreviation: team.abbreviation,
+      name: entry.nameSnapshot,
+      abbreviation: entry.abbreviationSnapshot,
       league: team.league,
-      conference: team.conference,
-      division: team.division,
+      conference: entry.conferenceSnapshot,
+      division: entry.divisionSnapshot,
       logoUrl: team.logoUrl,
       priorRecord: priorRecordByTeam.has(team.id)
         ? {
@@ -1071,7 +1073,8 @@ export async function getDraftRoomState(draftSessionId: string, viewerUserId: st
             ties: priorRecordByTeam.get(team.id)!.ties,
           }
         : null,
-    }))
+    }
+  })
 
   const sortTeamsByPriorRecord = <T extends (typeof eligibleTeams)[number]>(left: T, right: T) => {
     const leftRecord = left.priorRecord ?? { wins: 0, losses: Number.MAX_SAFE_INTEGER, ties: 0 }

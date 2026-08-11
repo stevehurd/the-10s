@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto'
 
+export function legacyRosterNickname(userName) {
+  const nickname = userName?.trim()
+  if (!nickname) throw new Error('A legacy player name is required for the roster nickname')
+  return nickname
+}
+
 export function legacyFingerprint({ season, users, teams }) {
   const snapshot = {
     season: { id: season.id, year: season.year },
@@ -44,6 +50,11 @@ export function validateLegacyData({ users, teams }) {
   }
 
   for (const user of users) {
+    try {
+      legacyRosterNickname(user.name)
+    } catch (error) {
+      errors.push(error.message)
+    }
     const email = user.email?.trim().toLowerCase()
     if (!email) warnings.push(`${user.name} has no email and cannot sign in until one is assigned`)
     else if (normalizedEmails.has(email)) errors.push(`${user.name} and ${normalizedEmails.get(email)} share the same email`)
@@ -155,6 +166,9 @@ export function reconcileMigrationSnapshot(legacy, migrated, options = {}) {
     if (participant.nflWins !== standing.nflWins) errors.push(`${user.name} NFL wins differ`)
     if (participant.collegeWins !== standing.collegeWins) errors.push(`${user.name} college wins differ`)
     if (participant.finalRank !== expectedRankByUserId.get(user.id)) errors.push(`${user.name} final rank differs`)
+    if (participant.poolSeat?.label !== legacyRosterNickname(user.name)) {
+      errors.push(`${user.name} roster nickname differs from the legacy player name`)
+    }
   }
 
   if (options.commissionerEmail || options.commissionerUserId) {

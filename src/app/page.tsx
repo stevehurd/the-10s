@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import DraftCountdown from '@/components/draft-countdown'
 import KeeperStatusCallout from '@/components/keeper-status-callout'
+import SeasonSelector from '@/components/season-selector'
 import TeamMark from '@/components/team-mark'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
@@ -195,13 +196,7 @@ export default async function Home({
               {isPreseason ? 'Preseason' : isComplete ? 'Season complete' : 'In season'}
             </p>
           </div>
-          <form>
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="season">Season</label>
-            <select className="mt-1 block rounded-xl border border-white/10 bg-slate-900 px-4 py-2" defaultValue={selectedSeason.id} id="season" name="season">
-              {seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}
-            </select>
-            <button className="sr-only" type="submit">Change season</button>
-          </form>
+          <SeasonSelector seasons={seasons} selectedSeasonId={selectedSeason.id} />
         </div>
 
         {previewAllowed ? (

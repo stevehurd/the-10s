@@ -1,16 +1,8 @@
 import { prisma } from './db'
+import { mapCollegeHierarchyToTeams } from './team-data-rules'
+import type { TeamSyncData } from './team-data-types'
 
-export interface TeamSyncData {
-  name: string
-  abbreviation: string
-  conference: string | null
-  division: string | null
-  league: 'NFL' | 'COLLEGE'
-  externalId: string | null
-  sportsDataTeamId: string | null
-  sportsDataGlobalTeamId: string | null
-  logoUrl: string | null
-}
+export type { TeamSyncData } from './team-data-types'
 
 // College Football Data API with multiple sources
 export async function fetchCollegeTeams(): Promise<TeamSyncData[]> {
@@ -19,7 +11,7 @@ export async function fetchCollegeTeams(): Promise<TeamSyncData[]> {
   if (sportsDataApiKey) {
     try {
       console.log('Trying SportsDataIO API...')
-      const response = await fetch('https://api.sportsdata.io/v3/cfb/scores/json/TeamsBasic', {
+      const response = await fetch('https://api.sportsdata.io/v3/cfb/scores/json/LeagueHierarchy', {
         headers: {
           'Ocp-Apim-Subscription-Key': sportsDataApiKey
         }
@@ -30,23 +22,9 @@ export async function fetchCollegeTeams(): Promise<TeamSyncData[]> {
         console.log(`✅ SportsDataIO: Found ${teams?.length || 0} teams`)
         
         if (teams && Array.isArray(teams) && teams.length > 0) {
-          // Filter to only include teams with conference data (FBS teams)
-          const fbsTeams = teams.filter((team: { Active?: boolean; Conference: string }) =>
-            team.Active !== false && Boolean(team.Conference),
-          )
-          console.log(`✅ Filtered to ${fbsTeams.length} FBS teams (with conferences)`)
-          
-          return fbsTeams.map((team: { TeamID: number; School: string; Name: string; ShortDisplayName?: string; Key: string; Conference: string; GlobalTeamID: number; TeamLogoUrl: string }) => ({
-            name: `${team.School} ${team.Name}`, // Full name: "SMU Mustangs"
-            abbreviation: team.ShortDisplayName || team.Key || team.School?.substring(0, 4).toUpperCase(),
-            conference: team.Conference,
-            division: null,
-            league: 'COLLEGE' as const,
-            externalId: team.GlobalTeamID?.toString() ?? null,
-            sportsDataTeamId: team.TeamID?.toString() ?? null,
-            sportsDataGlobalTeamId: team.GlobalTeamID?.toString() ?? null,
-            logoUrl: team.TeamLogoUrl || null,
-          }))
+          const fbsTeams = mapCollegeHierarchyToTeams(teams)
+          console.log(`✅ SportsDataIO hierarchy: Found ${fbsTeams.length} active FBS teams`)
+          return fbsTeams
         }
       } else {
         console.log(`❌ SportsDataIO: API returned ${response.status} ${response.statusText}`)

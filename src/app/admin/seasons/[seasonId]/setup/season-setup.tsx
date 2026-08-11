@@ -135,7 +135,7 @@ export default function SeasonSetup({ seasonId, participants: initialParticipant
           <Link className="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white" href="/demo">Back to draft demo</Link>
         ) : (
           <>
-            <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold" href={`/admin/seasons/${seasonId}/eligibility`}>Review team eligibility</Link>
+            <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold" href={`/admin/seasons/${seasonId}/eligibility`}>Manage college team pool</Link>
             <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold" href="/admin/users">Manage pool access</Link>
             <Link className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white" href="/admin/draft">Continue to draft control</Link>
           </>

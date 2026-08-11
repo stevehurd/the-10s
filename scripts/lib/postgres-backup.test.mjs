@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { backupFileStem, parsePostgresConnection } from './postgres-backup.mjs'
+import {
+  backupFileStem,
+  parsePostgresConnection,
+  requiredMetadataLabel,
+} from './postgres-backup.mjs'
 
 test('parses a PostgreSQL URL without exposing the original URL', () => {
   assert.deepEqual(
@@ -32,5 +36,14 @@ test('creates a filesystem-safe UTC backup name', () => {
   assert.equal(
     backupFileStem(new Date('2026-08-08T19:42:01.123Z')),
     'football-pool-production-2026-08-08T19-42-01-123Z',
+  )
+})
+
+test('requires safe operator-supplied backup metadata labels', () => {
+  assert.equal(requiredMetadataLabel(' Supabase ', '--source-provider'), 'Supabase')
+  assert.throws(() => requiredMetadataLabel('', '--source-provider'), /is required/)
+  assert.throws(
+    () => requiredMetadataLabel('Supabase\nsecret', '--source-provider'),
+    /single-line label/,
   )
 })

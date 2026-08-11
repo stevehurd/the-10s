@@ -4,6 +4,10 @@ import { notFound, redirect } from 'next/navigation'
 import KeeperStatusCallout from '@/components/keeper-status-callout'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
+import {
+  getPreparationTeamState,
+  type PreparationEligibilityStatus,
+} from '@/lib/seasons/preparation'
 
 import PreparationBoard from './preparation-board'
 
@@ -23,16 +27,21 @@ export default async function DraftPreparationPage({ params }: { params: Promise
 
   const [eligibility, priorRecords, heldSlots, viewerParticipant] = await Promise.all([
     prisma.seasonTeamEligibility.findMany({
-      where: { seasonId, status: 'APPROVED' },
+      where: { seasonId },
       include: { team: true },
     }),
     season.previousSeasonId
       ? prisma.teamSeasonRecord.findMany({ where: { seasonId: season.previousSeasonId } })
       : [],
     prisma.rosterSlot.findMany({
-      where: { seasonId, teamId: { not: null } },
+      where: {
+        seasonId,
+        teamId: { not: null },
+        retentionChoice: { in: ['KEEP', 'PENDING'] },
+      },
       select: {
         teamId: true,
+        retentionChoice: true,
         seasonParticipant: { select: { user: { select: { name: true } } } },
       },
     }),
@@ -44,25 +53,33 @@ export default async function DraftPreparationPage({ params }: { params: Promise
   const recordByTeam = new Map(priorRecords.map((record) => [record.teamId, record]))
   const holderByTeam = new Map(
     heldSlots.flatMap((slot) => slot.teamId
-      ? [[slot.teamId, slot.seasonParticipant.user.name] as const]
+      ? [[slot.teamId, {
+          name: slot.seasonParticipant.user.name,
+          retentionChoice: slot.retentionChoice as 'KEEP' | 'PENDING',
+        }] as const]
       : []),
   )
-  const teams = eligibility.map(({ team }) => {
+  const teams = eligibility.map((entry) => {
+    const { status, team } = entry
     const record = recordByTeam.get(team.id)
-    const holder = holderByTeam.get(team.id)
+    const holder = holderByTeam.get(team.id) ?? null
+    const preparationState = getPreparationTeamState(
+      status as PreparationEligibilityStatus,
+      holder,
+    )
     return {
       id: team.id,
-      name: team.name,
-      abbreviation: team.abbreviation,
+      name: entry.nameSnapshot,
+      abbreviation: entry.abbreviationSnapshot,
       league: team.league === 'NFL' ? 'NFL' as const : 'COLLEGE' as const,
-      conference: team.conference,
-      division: team.division,
+      conference: entry.conferenceSnapshot,
+      division: entry.divisionSnapshot,
       logoUrl: team.logoUrl,
       wins: record?.wins ?? 0,
       losses: record?.losses ?? 0,
       ties: record?.ties ?? 0,
-      available: !holder,
-      unavailableReason: holder ? `Kept by ${holder}` : null,
+      eligibilityStatus: status as PreparationEligibilityStatus,
+      ...preparationState,
     }
   })
 

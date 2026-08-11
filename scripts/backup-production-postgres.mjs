@@ -5,10 +5,18 @@ import { chmod, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
-import { backupFileStem, parsePostgresConnection } from './lib/postgres-backup.mjs'
+import {
+  backupFileStem,
+  parsePostgresConnection,
+  requiredMetadataLabel,
+} from './lib/postgres-backup.mjs'
 
-const outputFlagIndex = process.argv.indexOf('--output-dir')
-const outputDir = outputFlagIndex >= 0 ? process.argv[outputFlagIndex + 1] : null
+function flagValue(name) {
+  const index = process.argv.indexOf(name)
+  return index >= 0 ? process.argv[index + 1] : null
+}
+
+const outputDir = flagValue('--output-dir')
 
 function assert(condition, message) {
   if (!condition) throw new Error(message)
@@ -17,6 +25,11 @@ function assert(condition, message) {
 async function main() {
   assert(process.env.DIRECT_URL, 'DIRECT_URL is required')
   assert(outputDir, '--output-dir is required')
+  const sourceProvider = requiredMetadataLabel(flagValue('--source-provider'), '--source-provider')
+  const sourceDeployment = requiredMetadataLabel(
+    flagValue('--source-deployment'),
+    '--source-deployment',
+  )
 
   const destination = resolve(outputDir)
   const workspace = resolve(process.cwd())
@@ -54,6 +67,7 @@ async function main() {
       '--compress=9',
       '--no-owner',
       '--no-privileges',
+      '--schema=public',
       `--file=/backup/${dumpName}`,
     ],
     {
@@ -78,10 +92,11 @@ async function main() {
 
   const metadata = {
     version: 1,
-    sourceDeployment: 'the-10s',
-    sourceProvider: 'Vercel Postgres',
+    sourceDeployment,
+    sourceProvider,
     createdAt: createdAt.toISOString(),
     format: 'PostgreSQL custom archive',
+    includedSchemas: ['public'],
     fileName: dumpName,
     bytes: (await stat(dumpPath)).size,
     sha256: createHash('sha256').update(dump).digest('hex'),

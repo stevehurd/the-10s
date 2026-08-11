@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client'
 import {
   createPreflightReport,
   legacyFingerprint,
+  legacyRosterNickname,
   rankLegacyStandings,
   reconcileMigrationSnapshot,
 } from './lib/legacy-2025-rehearsal.mjs'
@@ -132,8 +133,9 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
       })
     }
 
-    for (const [index, standing] of standings.entries()) {
+    for (const standing of standings) {
       const user = standing.user
+      const rosterNickname = legacyRosterNickname(user.name)
       await tx.poolMembership.upsert({
         where: { poolId_userId: { poolId: pool.id, userId: user.id } },
         update: {
@@ -153,7 +155,7 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
       })
       if (!participant) {
         const seat = await tx.poolSeat.create({
-          data: { poolId: pool.id, label: `2025 seat ${index + 1}` },
+          data: { poolId: pool.id, label: rosterNickname },
         })
         participant = await tx.seasonParticipant.create({
           data: {
@@ -177,6 +179,17 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
           },
         })
       }
+
+      await tx.poolSeat.updateMany({
+        where: {
+          id: participant.poolSeatId,
+          OR: [
+            { label: null },
+            { label: { startsWith: '2025 seat ' } },
+          ],
+        },
+        data: { label: rosterNickname },
+      })
 
       const draftByRound = new Map(user.drafts.map((draft) => [draft.round, draft]))
       for (let number = 1; number <= 10; number += 1) {
@@ -208,7 +221,7 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
 
     const migratedParticipants = await tx.seasonParticipant.findMany({
       where: { seasonId: season.id },
-      include: { rosterSlots: { include: { team: true } } },
+      include: { poolSeat: true, rosterSlots: { include: { team: true } } },
     })
     const migratedRecords = await tx.teamSeasonRecord.findMany({ where: { seasonId: season.id } })
     const migratedSeason = await tx.season.findUnique({ where: { id: season.id } })
@@ -246,6 +259,9 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
         },
       },
     })
+  }, {
+    maxWait: 15_000,
+    timeout: 120_000,
   })
 }
 

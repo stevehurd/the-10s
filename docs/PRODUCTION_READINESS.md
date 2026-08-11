@@ -53,8 +53,10 @@ repository.
 
 - [ ] Production backup explicitly approved
 - [ ] Backup timestamp, size, and SHA-256 checksum recorded privately
+- [ ] Backup metadata names the dashboard-confirmed provider/deployment and includes only `public`
 - [ ] Backup restored into an isolated database
 - [ ] Restore target proven not to be production
+- [ ] Player names retained; emails, auth links, and invitation metadata removed before preview access
 - [ ] Reviewed Prisma migrations deploy successfully to the restored copy
 - [ ] 2025 preflight passes and source fingerprint is saved
 - [ ] 2025 data migration applies successfully to the restored copy
@@ -65,6 +67,11 @@ repository.
 - [ ] Every participant's total wins match the legacy leaderboard
 - [ ] Exactly one intended commissioner membership exists
 - [ ] Completed 2025 records reject mutation
+- [ ] 2026 FBS sync uses SportsDataIO `LeagueHierarchy`
+- [ ] Unchanged 2026 FBS teams auto-approve and only additions/removals/detail changes require review
+- [ ] 2026 provider result reports 138 active FBS teams and the expected eight-team Pac-12
+- [ ] Re-running the 2026 FBS sync preserves audited commissioner overrides
+- [ ] 2025 eligibility snapshots and rosters remain unchanged after the 2026 sync
 - [ ] Restore-based rollback has been tested
 
 ## Staging
@@ -110,6 +117,8 @@ repository.
 - [ ] Commissioner sign-in and authorization pass
 - [ ] Member sign-in and authorization pass
 - [ ] Historical 2025 standings, rosters, and totals pass spot checks
+- [ ] Production 2026 college team-pool result matches the approved rehearsal evidence
+- [ ] Only approved 2026 college teams appear in draft preparation and the official draft
 - [ ] Keep/Release writes only to the intended upcoming season
 - [ ] Scheduled jobs enabled and observed
 - [ ] Server-side autopick worker observed, or browser-only limitation explicitly accepted for the official draft
@@ -122,7 +131,7 @@ repository.
 - [ ] Authentication and invitation failures monitored
 - [ ] Draft and cron failures monitored
 - [ ] Standings-sync failures monitored
-- [ ] First 2026 CFB rollover manually verified
+- [ ] First 2026 CFB rollover and eight-team Pac-12 membership manually verified
 - [ ] Rollback window formally closed by the release owner
 
 ## Release decision

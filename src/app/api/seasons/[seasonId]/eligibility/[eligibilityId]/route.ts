@@ -3,7 +3,10 @@ import { NextResponse } from 'next/server'
 import { authorizeApi } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
 import { draftErrorResponse } from '@/lib/draft/http'
-import { setEligibilityStatus } from '@/lib/seasons/eligibility'
+import {
+  overrideSeasonEligibility,
+  setEligibilityStatus,
+} from '@/lib/seasons/eligibility'
 
 export async function PATCH(
   request: Request,
@@ -17,6 +20,17 @@ export async function PATCH(
     const authorization = await authorizeApi('COMMISSIONER', season.poolId)
     if (!authorization.authorized) return authorization.response
     const body = await request.json()
+    if (body.action === 'OVERRIDE') {
+      const eligibility = await overrideSeasonEligibility({
+        seasonId,
+        eligibilityId,
+        status: body.status,
+        conference: body.conference,
+        note: body.note,
+        actorUserId: authorization.appUser.id,
+      })
+      return NextResponse.json(eligibility)
+    }
     if (body.status !== 'APPROVED' && body.status !== 'INACTIVE') {
       return NextResponse.json({ error: 'Status must be APPROVED or INACTIVE' }, { status: 400 })
     }

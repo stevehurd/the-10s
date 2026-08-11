@@ -18,6 +18,7 @@
     "db:verify:demo": "node scripts/verify-development-seed.mjs",
     "migrate:2025-data": "node scripts/migrate-2025-data.mjs",
     "migrate:2025-rehearsal": "node scripts/rehearse-2025-fixture.mjs && node --test scripts/lib/legacy-2025-rehearsal.test.mjs",
+    "migrate:2025-staging": "node scripts/rehearse-staging-from-backup.mjs",
     "migration:check": "node scripts/check-migration-history.mjs",
     "migration:inspect": "node scripts/inspect-migration-state.mjs",
     "backup:production": "node scripts/backup-production-postgres.mjs",

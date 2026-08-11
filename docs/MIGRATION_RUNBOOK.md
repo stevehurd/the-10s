@@ -38,14 +38,22 @@ to disk or stdout:
 ```sh
 op run --account my.1password.com --env-file=.env.production.op -- \
   npm run backup:production -- \
-  --output-dir "$HOME/Documents/Football Pool Backups"
+  --output-dir "$HOME/Documents/Football Pool Backups" \
+  --source-provider "CONFIRMED_DATABASE_PROVIDER" \
+  --source-deployment "CONFIRMED_PRODUCTION_DEPLOYMENT"
 ```
 
 The ignored `.env.production.op` file contains only 1Password references. The
 backup command refuses an output directory inside the repository, uses
 `pg_dump` from the `postgres:17-alpine` Docker image, writes an owner-readable
-custom-format archive, and creates a sidecar JSON file with its timestamp, byte
-size, and SHA-256 checksum. It never prints the connection URL or password.
+custom-format archive of the application-owned `public` schema, and creates a
+sidecar JSON file with its operator-confirmed source labels, timestamp, byte
+size, included schema, and SHA-256 checksum. Supabase-managed Auth data is not
+included. The command never prints the connection URL or password.
+
+Do not guess the source provider from an old deployment name. Confirm the
+provider and deployment in their dashboards immediately before running the
+backup, and copy those human-readable labels into the command.
 
 Record every restored-copy rehearsal with:
 
@@ -57,6 +65,37 @@ Record every restored-copy rehearsal with:
 - commissioner identity confirmation performed outside the report
 - apply start/end timestamps and final reconciliation result
 - rollback owner and tested restore command
+
+Use [REHEARSAL_RECORD_TEMPLATE.md](./REHEARSAL_RECORD_TEMPLATE.md) for the
+private operator record. Never commit a completed copy of that template.
+
+## Rehearsal data and identity policy
+
+Restore the archive into an explicitly approved, disposable staging database.
+Do not restore it into the production database. Replacing synthetic staging data
+is allowed only when the repository owner explicitly approves that destructive
+rehearsal step; synthetic draft-harness data can be recreated later.
+
+Retain these source values exactly so the owner can visually and numerically
+compare the rehearsal with the 2025 application:
+
+- player names
+- roster nicknames, initially seeded from each production player name
+- 2025 team selections and numbered draft slots
+- NFL and college team identity
+- team W-L-T totals, player win totals, and final rankings
+
+Before connecting a web deployment to the restored copy, remove all contact and
+authentication linkage from the application data: email addresses,
+`auth_user_id` values, invitation timestamps/status, and invitation attempt
+counts. The `public`-schema backup deliberately excludes Supabase Auth users and
+sessions. Use the confirmed legacy user ID—not an email—to select the rehearsal
+commissioner during migration. Create new rehearsal-only Supabase Auth accounts
+after sanitization and link them through the normal invitation workflow.
+
+The preview deployment must use rehearsal-only Supabase URL/key values and an
+exact auth redirect allowlist. It must not receive production credentials,
+production Resend credentials, or production scheduled jobs.
 
 ## Migration history baseline
 
@@ -139,12 +178,43 @@ Compare these values with the source export:
 - Each participant has exactly ten `roster_slots`.
 - Each roster contains two NFL and eight college teams.
 - The sum of roster wins matches the legacy leaderboard for every user.
+- Every migrated pool seat initially uses the production player name as its roster nickname.
 - `team_season_records` preserves each team's legacy total wins and losses.
 - The 2025 season and every 2025 team-season record are finalized and rejected by future sync operations.
 - Exactly one intended user has an active commissioner membership.
 - The post-migration audit event records the source fingerprint and `reconciliation: PASSED`.
 
-Pre-create each pool member with the correct email through commissioner access. Their first verified Supabase email-link sign-in atomically links `auth_user_id` to the migrated profile.
+After 2025 passes reconciliation, create 2026 through the normal commissioner
+season-creation UI. This is intentionally not part of the legacy migration. The
+new season must begin in `SETUP` (preseason), inherit ten numbered roster slots
+per returning participant, preserve keepers in their original slots, default the
+first-round order to reverse 2025 standings, and initialize its college team pool
+from the current SportsDataIO `LeagueHierarchy` feed. Do not mark 2026 active or
+schedule an official draft during the data-import step.
+
+The production rollover must use the same college team-pool workflow verified in
+development. Run **Sync current FBS teams** only after the migrated 2025 season
+has reconciled and 2026 exists. The sync must:
+
+- leave the finalized 2025 eligibility snapshots and rosters unchanged;
+- auto-approve teams whose name, abbreviation, conference, and division match
+  their 2025 season snapshot;
+- present only new, removed, or changed teams as commissioner exceptions;
+- preserve audited, season-specific commissioner overrides on later syncs; and
+- expose only approved 2026 teams to draft preparation and the official draft.
+
+Record the provider total and exception breakdown. For the 2026 cutover, verify
+138 active FBS teams and the eight-team Pac-12 membership observed in the
+development rehearsal: Boise State, Colorado State, Fresno State, Oregon State,
+San Diego State, Texas State, Utah State, and Washington State. Treat a different
+provider result as a no-go requiring investigation, not as permission to edit
+historical 2025 data.
+
+For the eventual production cutover, pre-create each pool member with the correct
+email through commissioner access. Their first verified Supabase email-link
+sign-in atomically links `auth_user_id` to the migrated profile. During the
+rehearsal, use only controlled rehearsal email addresses; do not reintroduce
+real member contact data after sanitization.
 
 ## Rollback
 

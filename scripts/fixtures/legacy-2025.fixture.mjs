@@ -62,6 +62,7 @@ export function buildMigratedSnapshot(legacy, commissionerEmail = 'player1@examp
       const collegeWins = user.drafts.filter((draft) => draft.team.league === 'COLLEGE').reduce((sum, draft) => sum + draft.team.wins, 0)
       return {
         userId: user.id,
+        poolSeat: { label: user.name },
         totalWins: nflWins + collegeWins,
         nflWins,
         collegeWins,

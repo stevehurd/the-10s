@@ -56,7 +56,7 @@ export default async function SeasonsAdminPage() {
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold" href={`/admin/seasons/${season.id}/setup`}>Manage season</Link>
-                  <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold" href={`/admin/seasons/${season.id}/eligibility`}>Eligibility</Link>
+                  <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold" href={`/admin/seasons/${season.id}/eligibility`}>College team pool</Link>
                   <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold" href={`/admin/seasons/${season.id}/standings`}>Standings data</Link>
                   <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold" href="/admin/draft">Draft</Link>
                   {(season.status === 'ACTIVE' || season.status === 'FINALIZED') ? (

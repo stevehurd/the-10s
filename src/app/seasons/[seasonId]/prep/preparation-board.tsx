@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import TeamMark from '@/components/team-mark'
+import {
+  shouldShowPreparationTeam,
+  type PreparationEligibilityStatus,
+} from '@/lib/seasons/preparation'
 
 interface PrepTeam {
   id: string
@@ -15,7 +19,9 @@ interface PrepTeam {
   wins: number
   losses: number
   ties: number
+  eligibilityStatus: PreparationEligibilityStatus
   available: boolean
+  held: boolean
   unavailableReason: string | null
 }
 
@@ -54,7 +60,7 @@ export default function PreparationBoard({ seasonId, teams }: { seasonId: string
   const displayed = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
     return teams
-      .filter((team) => showUnavailable || team.available)
+      .filter((team) => shouldShowPreparationTeam(team, showUnavailable))
       .filter((team) => league === 'ALL' || team.league === league)
       .filter((team) => !normalizedQuery || `${team.name} ${team.abbreviation} ${team.conference ?? ''} ${team.division ?? ''}`.toLowerCase().includes(normalizedQuery))
       .sort((left, right) =>
@@ -67,13 +73,23 @@ export default function PreparationBoard({ seasonId, teams }: { seasonId: string
   }, [league, query, shortlist, showUnavailable, teams])
 
   const available = teams.filter((team) => team.available)
+  const pendingReview = teams.filter((team) =>
+    team.eligibilityStatus === 'PENDING' || team.eligibilityStatus === 'REVIEW',
+  )
   return (
     <>
-      <section className="mt-6 grid gap-3 sm:grid-cols-3">
+      <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Available teams" value={available.length} />
         <Metric label="Available NFL" value={available.filter((team) => team.league === 'NFL').length} />
         <Metric label="Available college" value={available.filter((team) => team.league === 'COLLEGE').length} />
+        <Metric label="Awaiting review" value={pendingReview.length} />
       </section>
+
+      {pendingReview.length > 0 ? (
+        <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+          College teams awaiting annual FBS review are visible for draft preparation, but they are not draftable until a commissioner approves them.
+        </p>
+      ) : null}
 
       <section className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
         <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
@@ -81,14 +97,14 @@ export default function PreparationBoard({ seasonId, teams }: { seasonId: string
           <div className="flex gap-2">
             {(['ALL', 'NFL', 'COLLEGE'] as const).map((value) => <button className={`rounded-lg px-3 py-2 text-sm font-bold ${league === value ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-300'}`} key={value} onClick={() => setLeague(value)} type="button">{value === 'COLLEGE' ? 'College' : value === 'ALL' ? 'All' : 'NFL'}</button>)}
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-300"><input checked={showUnavailable} onChange={(event) => setShowUnavailable(event.target.checked)} type="checkbox" /> Show kept teams</label>
+          <label className="flex items-center gap-2 text-sm text-slate-300"><input checked={showUnavailable} onChange={(event) => setShowUnavailable(event.target.checked)} type="checkbox" /> Show kept/pending teams</label>
         </div>
         <p className="mt-3 text-xs text-slate-500">Your ★ shortlist is private and stored only in this browser. Shortlisted teams sort first.</p>
       </section>
 
       <section className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {displayed.map((team) => (
-          <article className={`rounded-2xl border p-4 ${team.available ? 'border-white/10 bg-white/5' : 'border-white/10 bg-white/5 opacity-60'}`} key={team.id}>
+          <article className={`rounded-2xl border p-4 ${team.available ? 'border-white/10 bg-white/5' : 'border-amber-300/20 bg-white/5'}`} key={team.id}>
             <div className="flex items-start gap-3">
               <button aria-label={`${shortlist.has(team.id) ? 'Remove' : 'Add'} ${team.name} ${shortlist.has(team.id) ? 'from' : 'to'} shortlist`} className={`text-2xl ${shortlist.has(team.id) ? 'text-blue-300' : 'text-slate-600 hover:text-blue-200'}`} onClick={() => toggleShortlist(team.id)} type="button">★</button>
               <TeamMark abbreviation={team.abbreviation} logoUrl={team.logoUrl} size="lg" />

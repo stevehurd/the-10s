@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   createPreflightReport,
   legacyFingerprint,
+  legacyRosterNickname,
   rankLegacyStandings,
   reconcileMigrationSnapshot,
   validateLegacyData,
@@ -12,6 +13,11 @@ import {
   buildLegacy2025Fixture,
   buildMigratedSnapshot,
 } from '../fixtures/legacy-2025.fixture.mjs'
+
+test('the production player name seeds the roster nickname', () => {
+  assert.equal(legacyRosterNickname(' Steve '), 'Steve')
+  assert.throws(() => legacyRosterNickname('  '), /player name is required/)
+})
 
 test('a complete synthetic legacy season passes preflight and reconciliation', () => {
   const legacy = buildLegacy2025Fixture()
@@ -97,6 +103,7 @@ test('reconciliation reports roster, totals, team records, and finalization drif
   migrated.participants[0].rosterSlots[0].teamId = 'wrong-team'
   migrated.participants[1].totalWins += 1
   migrated.participants[2].finalRank = migrated.participants[1].finalRank
+  migrated.participants[0].poolSeat.label = '2025 seat 1'
   migrated.teamRecords[0].wins += 1
   migrated.memberships[0].role = 'MEMBER'
   migrated.season.status = 'ACTIVE'
@@ -105,6 +112,7 @@ test('reconciliation reports roster, totals, team records, and finalization drif
   assert.ok(errors.some((error) => error.includes('slot 1 team differs')))
   assert.ok(errors.some((error) => error.includes('total wins differ')))
   assert.ok(errors.some((error) => error.includes('final rank differs')))
+  assert.ok(errors.some((error) => error.includes('roster nickname differs')))
   assert.ok(errors.some((error) => error.includes('W-L-T differs')))
   assert.ok(errors.some((error) => error.includes('intended 2025 user')))
   assert.ok(errors.some((error) => error.includes('season is not finalized')))

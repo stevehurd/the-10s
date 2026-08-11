@@ -24,3 +24,12 @@ export function backupFileStem(date = new Date()) {
   if (Number.isNaN(date.getTime())) throw new Error('A valid backup timestamp is required')
   return `football-pool-production-${date.toISOString().replace(/[:.]/g, '-')}`
 }
+
+export function requiredMetadataLabel(value, flagName) {
+  const normalized = value?.trim()
+  if (!normalized) throw new Error(`${flagName} is required`)
+  if (normalized.length > 100 || /[\r\n\0]/.test(normalized)) {
+    throw new Error(`${flagName} must be a single-line label no longer than 100 characters`)
+  }
+  return normalized
+}
