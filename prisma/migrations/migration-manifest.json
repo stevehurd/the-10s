@@ -20,6 +20,10 @@
     {
       "id": "20260809000000_standings_sync_runs",
       "sha256": "1ed419f32bd372608c7db6191daae1694819213cd785c854b822cdd091f050d5"
+    },
+    {
+      "id": "20260811000000_lock_down_supabase_data_api",
+      "sha256": "2a4202cc9b35c9df228a2d8c8797590145de55b821d9e20e90e05a25e23b1a1b"
     }
   ]
 }
