@@ -92,10 +92,10 @@ accepted release risk at the final GO/NO-GO decision.
 
 ## Domain and transactional email
 
-- [ ] Vercel reports the required Cloudflare DNS records
-- [ ] `league-house.com` is configured as the canonical hostname
-- [ ] `www.league-house.com` redirects to the canonical hostname
-- [ ] TLS is valid on both hostnames
+- [x] Vercel reports the required Cloudflare DNS records
+- [x] `league-house.com` is configured as the canonical hostname
+- [x] `www.league-house.com` redirects to the canonical hostname
+- [x] TLS is valid on both hostnames
 - [ ] `mail.league-house.com` passes Resend SPF and DKIM verification
 - [ ] Authentication email open/link tracking is disabled
 - [x] Resend SMTP works with development Supabase
@@ -108,8 +108,8 @@ accepted release risk at the final GO/NO-GO decision.
 - [x] Backup operation approved
 - [x] Schema/data migration approved
 - [x] Vercel production deployment approved
-- [ ] Cloudflare DNS change approved
-- [ ] Supabase Auth URL change approved
+- [x] Cloudflare DNS change approved
+- [x] Supabase Auth URL change approved
 - [ ] Scheduled-job change approved
 - [x] Production autopick resilience chosen: browser-triggered autopick accepted for initial launch
 - [ ] Invitation enablement approved
@@ -119,8 +119,8 @@ accepted release risk at the final GO/NO-GO decision.
 - [x] Schema and 2025 data migrations reconcile successfully
 - [x] Approved application commit deployed
 - [x] Vercel-hostname smoke test passes before DNS cutover
-- [ ] Production Site URL is `https://league-house.com`
-- [ ] Production redirect allowlist uses exact URLs
+- [x] Production Site URL is `https://league-house.com`
+- [x] Production redirect allowlist uses exact URLs
 - [ ] Commissioner sign-in and authorization pass
 - [ ] Member sign-in and authorization pass
 - [ ] Historical 2025 standings, rosters, and totals pass spot checks
@@ -180,5 +180,8 @@ Notes must contain no credentials or private member information:
 - Production environment: required database, Supabase, SportsDataIO, Resend, URL, and runtime variables wired; invitation delivery remains disabled
 - Deployment upload excludes all local `.env` files through `.vercelignore`; replacement build completed without the environment-file warning
 - Unauthenticated smoke checks: login returned 200 and dashboard redirected to login on both immutable and aliased Vercel hostnames
-- `league-house.com` has no resolvable DNS yet; Cloudflare/Vercel domain cutover and production passwordless sign-in remain pending
+- Production domain cutover: Cloudflare apex and `www` CNAME records point DNS-only to Vercel; staging and mail records were preserved
+- Production domain verification: Vercel reports apex and `www` verified, apex login returns 200 over TLS, and `www` returns a permanent 308 redirect to the apex
+- Staging verification after cutover: `https://staging.league-house.com/login` continues to return 200 over TLS
+- Production passwordless sign-in and commissioner/member authorization remain pending human smoke tests
 ```
