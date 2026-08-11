@@ -101,7 +101,7 @@ accepted release risk at the final GO/NO-GO decision.
 - [x] Resend SMTP works with development Supabase
 - [x] Resend SMTP is configured in production Supabase
 - [x] Supabase email template matches the chosen passwordless-link flow
-- [x] Production invitation delivery remains disabled
+- [x] Production invitation delivery is enabled for commissioner-triggered sends only
 
 ## Production cutover
 
@@ -112,7 +112,7 @@ accepted release risk at the final GO/NO-GO decision.
 - [x] Supabase Auth URL change approved
 - [ ] Scheduled-job change approved
 - [x] Production autopick resilience chosen: browser-triggered autopick accepted for initial launch
-- [ ] Invitation enablement approved
+- [x] Invitation enablement approved
 - [ ] Legacy application write freeze started
 - [x] Fresh backup checksum verified
 - [x] Source fingerprint unchanged at migration apply time
@@ -177,7 +177,9 @@ Notes must contain no credentials or private member information:
 - Production schema migration: all six repository migrations recorded as complete; legacy source tables and rows retained
 - Production 2025 migration: reconciliation passed with 15 memberships, 15 participants, 150 roster slots, 168 team records, and 168 eligibility snapshots
 - Vercel production deployment: commit `8e86946`, deployment `dpl_DRk8Rys8VFUHF5uW8hcXtTTKciUz`, READY and aliased to `the-10s.vercel.app`
-- Production environment: required database, Supabase, SportsDataIO, Resend, URL, and runtime variables wired; invitation delivery remains disabled
+- Production environment: required database, Supabase, SportsDataIO, Resend, URL, and runtime variables wired
+- Production invitation delivery enabled by explicit approval; sends remain one-off commissioner actions and are never automatic
+- Invitation-enabled redeployment: `dpl_GghjVbkHGGMxnoesmKHKZxbHWNKj`, READY and aliased to `league-house.com`; post-deploy login returned 200 over TLS
 - Deployment upload excludes all local `.env` files through `.vercelignore`; replacement build completed without the environment-file warning
 - Unauthenticated smoke checks: login returned 200 and dashboard redirected to login on both immutable and aliased Vercel hostnames
 - Production domain cutover: Cloudflare apex and `www` CNAME records point DNS-only to Vercel; staging and mail records were preserved
