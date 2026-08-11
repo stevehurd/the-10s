@@ -10,7 +10,7 @@ repository.
 - [ ] Release owner identified
 - [ ] Approved Git commit recorded
 - [ ] Current production deployment recorded
-- [ ] Intended commissioner legacy user ID confirmed privately
+- [x] Intended commissioner legacy profile confirmed privately
 - [ ] Maintenance/write-freeze window agreed
 - [ ] Rollback owner identified
 
@@ -106,7 +106,7 @@ accepted release risk at the final GO/NO-GO decision.
 ## Production cutover
 
 - [x] Backup operation approved
-- [ ] Schema/data migration approved
+- [x] Schema/data migration approved
 - [ ] Vercel production deployment approved
 - [ ] Cloudflare DNS change approved
 - [ ] Supabase Auth URL change approved
@@ -114,9 +114,9 @@ accepted release risk at the final GO/NO-GO decision.
 - [x] Production autopick resilience chosen: browser-triggered autopick accepted for initial launch
 - [ ] Invitation enablement approved
 - [ ] Legacy application write freeze started
-- [ ] Fresh backup checksum verified
-- [ ] Source fingerprint unchanged at migration apply time
-- [ ] Schema and 2025 data migrations reconcile successfully
+- [x] Fresh backup checksum verified
+- [x] Source fingerprint unchanged at migration apply time
+- [x] Schema and 2025 data migrations reconcile successfully
 - [ ] Approved application commit deployed
 - [ ] Vercel-hostname smoke test passes before DNS cutover
 - [ ] Production Site URL is `https://league-house.com`
@@ -174,4 +174,7 @@ Notes must contain no credentials or private member information:
 - Production database deployment recorded privately; provider dashboard identity matched the production connection before backup
 - Fresh owner-only `public`-schema backup created successfully; archive and checksum metadata are retained outside the repository
 - Production legacy-source preflight: passed read-only with 15 users, 168 teams, 150 roster assignments, and 15 expected missing-email warnings; fingerprint retained privately
+- Production schema migration: all six repository migrations recorded as complete; legacy source tables and rows retained
+- Production 2025 migration: reconciliation passed with 15 memberships, 15 participants, 150 roster slots, 168 team records, and 168 eligibility snapshots
+- Production application deployment and environment wiring remain unapproved and were not performed
 ```
