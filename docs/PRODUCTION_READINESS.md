@@ -108,7 +108,7 @@ accepted release risk at the final GO/NO-GO decision.
 - [ ] Cloudflare DNS change approved
 - [ ] Supabase Auth URL change approved
 - [ ] Scheduled-job change approved
-- [ ] Production autopick resilience chosen: Vercel Pro cron, external scheduler, or documented browser-only acceptance
+- [x] Production autopick resilience chosen: browser-triggered autopick accepted for initial launch
 - [ ] Invitation enablement approved
 - [ ] Legacy application write freeze started
 - [ ] Fresh backup checksum verified
@@ -125,7 +125,7 @@ accepted release risk at the final GO/NO-GO decision.
 - [ ] Only approved 2026 college teams appear in draft preparation and the official draft
 - [ ] Keep/Release writes only to the intended upcoming season
 - [ ] Scheduled jobs enabled and observed
-- [ ] Server-side autopick worker observed, or browser-only limitation explicitly accepted for the official draft
+- [x] Browser-only autopick limitation explicitly accepted for the official draft
 - [ ] One invitation successfully completes before bulk invitations
 - [ ] Write freeze ended only after every required check passes
 
@@ -157,4 +157,5 @@ Notes must contain no credentials or private member information:
 - Automated evidence: lint, typecheck, 98-test suite, migration checksum, production build
 - Synthetic migration rehearsal: passed without database access or writes
 - Manual multi-user draft rehearsal: skipped by release owner; remains unchecked
+- Autopick operations: browser-triggered model accepted; no external scheduler for initial launch
 ```

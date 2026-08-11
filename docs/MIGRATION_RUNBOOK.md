@@ -97,11 +97,24 @@ The preview deployment must use rehearsal-only Supabase URL/key values and an
 exact auth redirect allowlist. It must not receive production credentials,
 production Resend credentials, or production scheduled jobs.
 
+## Initial production autopick operations
+
+The release owner accepted browser-triggered autopick for the initial launch;
+no external draft scheduler is required. An authenticated draft-room client
+requests the server-authoritative autopick after an active turn expires. The
+commissioner must keep the draft room open during the official draft.
+
+If every draft-room browser disconnects, the expired turn remains pending until
+a participant reconnects and triggers the request or the commissioner resolves
+the pick. The protected `/api/cron/draft-autopicks` worker remains available for
+a future Vercel Pro or external scheduler, but it is intentionally unscheduled
+for this cutover. The daily standings cron remains a separate requirement.
+
 ## Migration history baseline
 
 Run `npm run migration:check` before every rehearsal or deployment. It verifies that each migration is committed, ordered, non-empty, unchanged from its reviewed SHA-256 manifest entry, and free of unmarked destructive statements. Database backup SQL remains ignored; only `prisma/migrations/**/migration.sql` is allowed through the repository ignore rules.
 
-Use `npm run migration:inspect` only with an explicitly selected credential source. It performs read-only information-schema and `_prisma_migrations` queries and prints migration names/status without printing connection values.
+Use `npm run migration:inspect` only with an explicitly selected credential source. It performs read-only information-schema, aggregate table-count, and `_prisma_migrations` queries. The report contains no row-level member data, contact values, connection values, or credentials. Legacy databases without `_prisma_migrations` are reported as such rather than treated as an inspection failure.
 
 The 2025 database was created with `prisma db push` and has no reliable Prisma migration history. The migration directory therefore contains:
 
