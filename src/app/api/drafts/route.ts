@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { authorizeApi } from '@/lib/auth/authorization'
 
 export async function POST(request: Request) {
+  const authorization = await authorizeApi('COMMISSIONER')
+  if (!authorization.authorized) return authorization.response
+
   try {
     const body = await request.json()
     const { userId, teamId, round, seasonId } = body
@@ -70,6 +74,9 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
+  const authorization = await authorizeApi()
+  if (!authorization.authorized) return authorization.response
+
   try {
     const drafts = await prisma.draft.findMany({
       include: {

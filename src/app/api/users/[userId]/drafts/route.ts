@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { authorizeApi } from '@/lib/auth/authorization'
 
 export async function GET(
   request: Request,
   context: { params: Promise<{ userId: string }> }
 ) {
+  const authorization = await authorizeApi('COMMISSIONER')
+  if (!authorization.authorized) return authorization.response
+
   try {
     const params = await context.params
     const drafts = await prisma.draft.findMany({
@@ -33,6 +37,9 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ userId: string }> }
 ) {
+  const authorization = await authorizeApi('COMMISSIONER')
+  if (!authorization.authorized) return authorization.response
+
   try {
     const params = await context.params
     const body = await request.json()
@@ -105,6 +112,9 @@ export async function DELETE(
   request: Request,
   context: { params: Promise<{ userId: string }> }
 ) {
+  const authorization = await authorizeApi('COMMISSIONER')
+  if (!authorization.authorized) return authorization.response
+
   try {
     const params = await context.params
     const { searchParams } = new URL(request.url)

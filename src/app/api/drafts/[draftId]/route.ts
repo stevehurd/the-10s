@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { authorizeApi } from '@/lib/auth/authorization'
 
 export async function PUT(
   request: Request,
   context: { params: Promise<{ draftId: string }> }
 ) {
+  const authorization = await authorizeApi('COMMISSIONER')
+  if (!authorization.authorized) return authorization.response
+
   const params = await context.params
   try {
     const body = await request.json()
@@ -75,6 +79,9 @@ export async function DELETE(
   request: Request,
   context: { params: Promise<{ draftId: string }> }
 ) {
+  const authorization = await authorizeApi('COMMISSIONER')
+  if (!authorization.authorized) return authorization.response
+
   const params = await context.params
   try {
     await prisma.draft.delete({

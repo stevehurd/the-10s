@@ -1,0 +1,148 @@
+import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
+import { cache } from 'react'
+
+import { prisma } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
+import { selectAuthorizedMembership } from './policy'
+
+export type AppRole = 'MEMBER' | 'COMMISSIONER'
+
+async function resolveCurrentAppUser() {
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.getClaims()
+  const subject = data?.claims.sub
+  const email = typeof data?.claims.email === 'string' ? data.claims.email : undefined
+  const newEmail = typeof data?.claims.new_email === 'string' ? data.claims.new_email : undefined
+
+  if (error || !subject) return null
+
+  const authUser = { id: subject, email, new_email: newEmail }
+
+  const includeMemberships = {
+    memberships: {
+      where: { status: 'ACTIVE' },
+      include: { pool: true },
+    },
+  } satisfies Prisma.UserInclude
+
+  let appUser = await prisma.user.findUnique({
+    where: { authUserId: authUser.id },
+    include: includeMemberships,
+  })
+
+  // A successful passwordless email link proves control of the invited address. This
+  // atomically connects a migrated profile on its first Supabase sign-in.
+  if (!appUser && authUser.email) {
+    const invitedProfile = await prisma.user.findFirst({
+      where: { email: { equals: authUser.email.trim(), mode: 'insensitive' } },
+      select: {
+        id: true,
+        memberships: { where: { status: 'ACTIVE' }, select: { poolId: true } },
+      },
+    })
+    if (invitedProfile) {
+      await prisma.$transaction(async (tx) => {
+        const claim = await tx.user.updateMany({
+          where: { id: invitedProfile.id, authUserId: null },
+          data: {
+            authUserId: authUser.id,
+            invitationClaimedAt: new Date(),
+            invitationFailedAt: null,
+          },
+        })
+        if (claim.count === 1) {
+          for (const membership of invitedProfile.memberships) {
+            await tx.auditEvent.create({
+              data: {
+                poolId: membership.poolId,
+                actorUserId: invitedProfile.id,
+                action: 'LEGACY_PLAYER_PROFILE_CLAIMED',
+                entityType: 'User',
+                entityId: invitedProfile.id,
+                data: { provider: 'SUPABASE_EMAIL_LINK' },
+              },
+            })
+          }
+        }
+      })
+      appUser = await prisma.user.findUnique({
+        where: { authUserId: authUser.id },
+        include: includeMemberships,
+      })
+    }
+  }
+
+  if (!appUser) return null
+
+  // Supabase owns sign-in identity. Once a verified email change completes,
+  // mirror the confirmed address into the application profile.
+  const confirmedEmail = authUser.email?.trim().toLowerCase()
+  if (confirmedEmail && appUser.email?.trim().toLowerCase() !== confirmedEmail) {
+    const collision = await prisma.user.findFirst({
+      where: {
+        email: { equals: confirmedEmail, mode: 'insensitive' },
+        id: { not: appUser.id },
+      },
+      select: { id: true },
+    })
+    if (!collision) {
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({ where: { id: appUser!.id }, data: { email: confirmedEmail } })
+        for (const membership of appUser!.memberships) {
+          await tx.auditEvent.create({
+            data: {
+              poolId: membership.poolId,
+              actorUserId: appUser!.id,
+              action: 'PLAYER_EMAIL_CONFIRMED',
+              entityType: 'User',
+              entityId: appUser!.id,
+            },
+          })
+        }
+      })
+      appUser = await prisma.user.findUnique({
+        where: { authUserId: authUser.id },
+        include: includeMemberships,
+      })
+    }
+  }
+
+  if (!appUser) return null
+  return { authUser, appUser }
+}
+
+// Layouts and pages frequently need the same identity in one render. React's
+// request memoization prevents repeating Supabase auth and profile queries.
+export const getCurrentAppUser = cache(resolveCurrentAppUser)
+
+export async function authorizeApi(
+  requiredRole: AppRole = 'MEMBER',
+  poolId?: string,
+) {
+  const context = await getCurrentAppUser()
+  if (!context) {
+    return {
+      authorized: false as const,
+      response: NextResponse.json({ error: 'Authentication required' }, { status: 401 }),
+    }
+  }
+
+  const membership = selectAuthorizedMembership(context.appUser.memberships, requiredRole, poolId)
+
+  if (!membership) {
+    return {
+      authorized: false as const,
+      response: NextResponse.json({ error: 'You do not have permission for this action' }, { status: 403 }),
+    }
+  }
+
+  return { authorized: true as const, ...context, membership }
+}
+
+export async function isCurrentUserCommissioner(): Promise<boolean> {
+  const context = await getCurrentAppUser()
+  return Boolean(
+    context?.appUser.memberships.some((membership) => membership.role === 'COMMISSIONER'),
+  )
+}

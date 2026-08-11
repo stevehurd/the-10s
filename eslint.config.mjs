@@ -1,25 +1,30 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import { defineConfig, globalIgnores } from 'eslint/config'
+import nextVitals from 'eslint-config-next/core-web-vitals'
+import nextTypeScript from 'eslint-config-next/typescript'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+export default defineConfig([
+  ...nextVitals,
+  ...nextTypeScript,
   {
-    ignores: [
-      "node_modules/**",
-      ".next/**",
-      "out/**",
-      "build/**",
-      "next-env.d.ts",
+    files: [
+      'src/app/admin/page.tsx',
+      'src/app/admin/draft/page.tsx',
+      'src/app/admin/teams/page.tsx',
+      'src/app/admin/users/page.tsx',
     ],
+    rules: {
+      // These legacy 2025 screens will be removed as their new commissioner
+      // workflows land. Keep them buildable during the additive migration.
+      'react-hooks/immutability': 'off',
+    },
   },
-];
-
-export default eslintConfig;
+  globalIgnores([
+    'node_modules/**',
+    '.next/**',
+    'out/**',
+    'build/**',
+    'supabase/.branches/**',
+    'supabase/.temp/**',
+    'next-env.d.ts',
+  ]),
+])

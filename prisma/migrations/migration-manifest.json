@@ -1,0 +1,29 @@
+{
+  "provider": "postgresql",
+  "migrations": [
+    {
+      "id": "20250801000000_legacy_baseline",
+      "sha256": "bf94c11cf34147214b93627a5d4b2624fd133459460424d6e1789011abbb46a1"
+    },
+    {
+      "id": "20260807000000_expansion_foundation",
+      "sha256": "05146c1a68e53c79bd285b90fd383f167f4f74ec8ad8556a5d2a42c019a40504"
+    },
+    {
+      "id": "20260807010000_draft_logistics",
+      "sha256": "690099ebb9c00ea1740bd79ed6ad64f6aaa0851b8dd78be544ce846dedd89a61"
+    },
+    {
+      "id": "20260808000000_invitation_delivery",
+      "sha256": "dbb97509f60ae111f59121806259ab6636f92651b40e8f221bca8f250f64dc5c"
+    },
+    {
+      "id": "20260809000000_standings_sync_runs",
+      "sha256": "1ed419f32bd372608c7db6191daae1694819213cd785c854b822cdd091f050d5"
+    },
+    {
+      "id": "20260811000000_lock_down_supabase_data_api",
+      "sha256": "bb02ff0f7191af2e6b7953336d5278b019717e5d71679f58dfd21bc02e294dcb"
+    }
+  ]
+}

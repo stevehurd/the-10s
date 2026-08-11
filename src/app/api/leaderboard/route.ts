@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { authorizeApi } from '@/lib/auth/authorization'
 
 export async function GET(request: Request) {
+  const authorization = await authorizeApi()
+  if (!authorization.authorized) return authorization.response
+
   try {
     const { searchParams } = new URL(request.url)
     const seasonId = searchParams.get('seasonId')

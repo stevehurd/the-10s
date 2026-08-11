@@ -1,0 +1,21 @@
+{
+  "season": 2025,
+  "teams": [
+    { "TeamID": 1, "GlobalTeamID": 1001, "Key": "ALP", "School": "Alpha", "Name": "Aces", "Active": true },
+    { "TeamID": 2, "GlobalTeamID": 1002, "Key": "BRV", "School": "Bravo", "Name": "Bears", "Active": true },
+    { "TeamID": 3, "GlobalTeamID": 1003, "Key": "CHR", "School": "Charlie", "Name": "Cats", "Active": true },
+    { "TeamID": 4, "GlobalTeamID": 1004, "Key": "DLT", "School": "Delta", "Name": "Dogs", "Active": true },
+    { "TeamID": 5, "GlobalTeamID": 1005, "Key": "ECH", "School": "Echo", "Name": "Eagles", "Active": true }
+  ],
+  "games": [
+    { "GameID": 101, "Season": 2025, "SeasonType": 1, "Week": 1, "Status": "Final", "DateTime": "2025-08-30T12:00:00", "AwayTeam": "BRV", "HomeTeam": "ALP", "AwayTeamScore": 14, "HomeTeamScore": 28, "GameEndDateTime": "2025-08-30T15:15:00", "AwayTeamID": 2, "HomeTeamID": 1 },
+    { "GameID": 102, "Season": 2025, "SeasonType": 1, "Week": 15, "Status": "F/OT", "DateTime": "2025-12-06T16:00:00", "AwayTeam": "CHR", "HomeTeam": "ALP", "AwayTeamScore": 27, "HomeTeamScore": 30, "GameEndDateTime": "2025-12-06T20:10:00", "AwayTeamID": 3, "HomeTeamID": 1, "Title": "Conference Championship" },
+    { "GameID": 103, "Season": 2025, "SeasonType": 1, "Week": 2, "Status": "Final", "DateTime": "2025-09-06T12:00:00", "AwayTeam": "ALP", "HomeTeam": "FCS", "AwayTeamScore": 35, "HomeTeamScore": 7, "GameEndDateTime": "2025-09-06T15:10:00", "AwayTeamID": 1, "HomeTeamID": 900 },
+    { "GameID": 104, "Season": 2025, "SeasonType": 1, "Week": 3, "Status": "Final", "DateTime": "2025-09-13T12:00:00", "AwayTeam": "BRV", "HomeTeam": "CHR", "AwayTeamScore": 17, "HomeTeamScore": 17, "GameEndDateTime": "2025-09-13T15:10:00", "AwayTeamID": 2, "HomeTeamID": 3 },
+    { "GameID": 105, "Season": 2025, "SeasonType": 3, "Week": 1, "Status": "Final", "DateTime": "2025-12-20T12:00:00", "AwayTeam": "ALP", "HomeTeam": "DLT", "AwayTeamScore": 21, "HomeTeamScore": 24, "GameEndDateTime": "2025-12-20T15:20:00", "AwayTeamID": 1, "HomeTeamID": 4, "Title": "Holiday Bowl" },
+    { "GameID": 106, "Season": 2025, "SeasonType": 3, "Week": 2, "Status": "Final", "DateTime": "2026-01-01T20:00:00", "AwayTeam": "ECH", "HomeTeam": "DLT", "AwayTeamScore": 20, "HomeTeamScore": 31, "GameEndDateTime": "2026-01-01T23:35:00", "AwayTeamID": 5, "HomeTeamID": 4, "Title": "College Football Playoff Semifinal" },
+    { "GameID": 107, "Season": 2025, "SeasonType": 3, "Week": 3, "Status": "Final", "DateTime": "2026-01-12T20:00:00", "AwayTeam": "DLT", "HomeTeam": "ALP", "AwayTeamScore": 27, "HomeTeamScore": 24, "GameEndDateTime": "2026-01-12T23:40:00", "AwayTeamID": 4, "HomeTeamID": 1, "Title": "College Football Playoff Championship" },
+    { "GameID": 108, "Season": 2025, "SeasonType": 1, "Week": 4, "Status": "Scheduled", "DateTime": "2025-09-20T12:00:00", "AwayTeam": "ECH", "HomeTeam": "BRV", "AwayTeamScore": null, "HomeTeamScore": null, "GameEndDateTime": null, "AwayTeamID": 5, "HomeTeamID": 2 },
+    { "GameID": 109, "Season": 2025, "SeasonType": 2, "Week": 0, "Status": "Final", "DateTime": "2025-08-01T12:00:00", "AwayTeam": "ECH", "HomeTeam": "BRV", "AwayTeamScore": 10, "HomeTeamScore": 7, "GameEndDateTime": "2025-08-01T15:00:00", "AwayTeamID": 5, "HomeTeamID": 2 }
+  ]
+}
