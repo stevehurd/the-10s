@@ -7,6 +7,7 @@ import {
   legacyRosterNickname,
   rankLegacyParticipants,
   reconcileMigrationSnapshot,
+  selectLegacyCommissioner,
 } from './lib/legacy-2025-rehearsal.mjs'
 
 const prisma = new PrismaClient()
@@ -20,6 +21,10 @@ const commissionerEmail =
 const commissionerUserIdFlagIndex = process.argv.indexOf('--commissioner-user-id')
 const requestedCommissionerUserId = commissionerUserIdFlagIndex >= 0
   ? process.argv[commissionerUserIdFlagIndex + 1]?.trim()
+  : null
+const commissionerNameFlagIndex = process.argv.indexOf('--commissioner-name')
+const requestedCommissionerName = commissionerNameFlagIndex >= 0
+  ? process.argv[commissionerNameFlagIndex + 1]?.trim()
   : null
 const fingerprintFlagIndex = process.argv.indexOf('--source-fingerprint')
 const expectedFingerprint =
@@ -105,22 +110,17 @@ async function loadLegacyData(client = prisma) {
 }
 
 async function migrate({ season, users, teams }, sourceFingerprint) {
-  assert(
-    Boolean(commissionerEmail) !== Boolean(requestedCommissionerUserId),
-    'Provide exactly one of --commissioner-email or --commissioner-user-id with --apply',
-  )
   assert(backupConfirmed, '--backup-confirmed is required with --apply')
   assert(expectedFingerprint, '--source-fingerprint is required with --apply')
   assert(
     expectedFingerprint === sourceFingerprint,
     'Source fingerprint does not match this preflight. Stop and create a new backup.',
   )
-  const commissioner = requestedCommissionerUserId
-    ? users.find((user) => user.id === requestedCommissionerUserId)
-    : users.find((user) => user.email?.trim().toLowerCase() === commissionerEmail)
-  assert(commissioner, requestedCommissionerUserId
-    ? 'Commissioner user ID does not match a 2025 user'
-    : 'Commissioner email does not match a 2025 user')
+  const commissioner = selectLegacyCommissioner(users, {
+    email: commissionerEmail,
+    userId: requestedCommissionerUserId,
+    name: requestedCommissionerName,
+  })
   const commissionerUserId = commissioner.id
 
   const standings = rankLegacyParticipants(users)

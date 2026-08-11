@@ -157,7 +157,7 @@ Notes must contain no credentials or private member information:
 - Season navigation displayed the correct 2025 completed view
 - College team pool: 138 active FBS, 127 auto-approved, 11 review exceptions
 - Pac-12: eight expected 2026 members
-- Automated evidence: lint, typecheck, 102-test suite, migration checksum, production build
+- Automated evidence: lint, typecheck, 103-test suite, migration checksum, production build
 - Synthetic migration rehearsal: passed without database access or writes
 - Manual multi-user draft rehearsal: skipped by release owner; remains unchecked
 - Autopick operations: browser-triggered model accepted; no external scheduler for initial launch

@@ -6,6 +6,34 @@ export function legacyRosterNickname(userName) {
   return nickname
 }
 
+export function selectLegacyCommissioner(users, { email, userId, name } = {}) {
+  const selectors = [email, userId, name].filter((value) => Boolean(value))
+  if (selectors.length !== 1) {
+    throw new Error('Provide exactly one commissioner email, user ID, or display name')
+  }
+
+  if (userId) {
+    const commissioner = users.find((user) => user.id === userId)
+    if (!commissioner) throw new Error('Commissioner user ID does not match a 2025 user')
+    return commissioner
+  }
+
+  if (email) {
+    const normalizedEmail = email.trim().toLowerCase()
+    const commissioner = users.find(
+      (user) => user.email?.trim().toLowerCase() === normalizedEmail,
+    )
+    if (!commissioner) throw new Error('Commissioner email does not match a 2025 user')
+    return commissioner
+  }
+
+  const matches = users.filter((user) => user.name === name)
+  if (matches.length !== 1) {
+    throw new Error(`Expected exactly one 2025 user with the commissioner display name; found ${matches.length}`)
+  }
+  return matches[0]
+}
+
 export function legacyFingerprint({ season, users, teams }) {
   const snapshot = {
     season: { id: season.id, year: season.year },

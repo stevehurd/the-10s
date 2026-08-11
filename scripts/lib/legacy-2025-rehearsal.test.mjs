@@ -8,6 +8,7 @@ import {
   rankLegacyParticipants,
   rankLegacyStandings,
   reconcileMigrationSnapshot,
+  selectLegacyCommissioner,
   validateLegacyData,
 } from './legacy-2025-rehearsal.mjs'
 import {
@@ -18,6 +19,22 @@ import {
 test('the production player name seeds the roster nickname', () => {
   assert.equal(legacyRosterNickname(' Steve '), 'Steve')
   assert.throws(() => legacyRosterNickname('  '), /player name is required/)
+})
+
+test('the commissioner can be selected uniquely by legacy display name', () => {
+  const users = [
+    { id: 'user-1', name: 'Steve', email: null },
+    { id: 'user-2', name: 'Alex', email: 'alex@example.test' },
+  ]
+
+  assert.equal(selectLegacyCommissioner(users, { name: 'Steve' }).id, 'user-1')
+  assert.equal(selectLegacyCommissioner(users, { userId: 'user-2' }).id, 'user-2')
+  assert.equal(selectLegacyCommissioner(users, { email: ' ALEX@example.test ' }).id, 'user-2')
+  assert.throws(
+    () => selectLegacyCommissioner([...users, { id: 'user-3', name: 'Steve' }], { name: 'Steve' }),
+    /found 2/,
+  )
+  assert.throws(() => selectLegacyCommissioner(users, {}), /exactly one commissioner/)
 })
 
 test('a complete synthetic legacy season passes preflight and reconciliation', () => {
