@@ -30,24 +30,75 @@ function assert(condition, message) {
 }
 
 async function loadLegacyData(client = prisma) {
-  const seasons = await client.season.findMany({ where: { year: 2025 } })
+  // Read only columns guaranteed by the legacy schema. The generated Prisma
+  // client targets the expanded schema and would otherwise select new columns
+  // before their migrations exist in production.
+  const seasons = await client.$queryRaw`
+    SELECT
+      s."id",
+      s."year",
+      s."name",
+      s."status",
+      NULL::timestamp AS "finalizedAt"
+    FROM "seasons" s
+    WHERE s."year" = 2025
+  `
   assert(seasons.length === 1, `Expected exactly one 2025 season; found ${seasons.length}`)
   const season = seasons[0]
 
-  const users = await client.user.findMany({
-    where: { drafts: { some: { seasonId: season.id } } },
-    include: {
-      drafts: {
-        where: { seasonId: season.id },
-        include: { team: true },
-        orderBy: { round: 'asc' },
-      },
-    },
-    orderBy: { name: 'asc' },
-  })
+  const rawUsers = await client.$queryRaw`
+    SELECT u."id", u."email", u."name"
+    FROM "users" u
+    WHERE EXISTS (
+      SELECT 1
+      FROM "drafts" d
+      WHERE d."user_id" = u."id"
+        AND d."season_id" = ${season.id}
+    )
+    ORDER BY u."name" ASC
+  `
+  const drafts = await client.$queryRaw`
+    SELECT
+      d."id",
+      d."season_id" AS "seasonId",
+      d."user_id" AS "userId",
+      d."team_id" AS "teamId",
+      d."round",
+      d."pick_number" AS "pickNumber",
+      d."is_keeper" AS "isKeeper"
+    FROM "drafts" d
+    WHERE d."season_id" = ${season.id}
+    ORDER BY d."user_id" ASC, d."round" ASC
+  `
+  const teams = await client.$queryRaw`
+    SELECT
+      t."id",
+      t."name",
+      t."abbr" AS "abbreviation",
+      t."conference",
+      t."division",
+      t."league",
+      t."external_id" AS "externalId",
+      t."logo_url" AS "logoUrl",
+      t."wins",
+      t."losses",
+      COALESCE((to_jsonb(t) ->> 'ties')::integer, 0) AS "ties",
+      COALESCE((to_jsonb(t) ->> 'active')::boolean, true) AS "active"
+    FROM "teams" t
+    ORDER BY t."league" ASC, t."name" ASC
+  `
+  const teamById = new Map(teams.map((team) => [team.id, team]))
+  const draftsByUserId = new Map()
+  for (const draft of drafts) {
+    const userDrafts = draftsByUserId.get(draft.userId) ?? []
+    userDrafts.push({ ...draft, team: teamById.get(draft.teamId) ?? null })
+    draftsByUserId.set(draft.userId, userDrafts)
+  }
+  const users = rawUsers.map((user) => ({
+    ...user,
+    drafts: draftsByUserId.get(user.id) ?? [],
+  }))
   assert(users.length > 0, 'No users exist')
-
-  const teams = await client.team.findMany({ orderBy: [{ league: 'asc' }, { name: 'asc' }] })
   assert(teams.length > 0, 'No teams exist')
 
   return { season, users, teams }

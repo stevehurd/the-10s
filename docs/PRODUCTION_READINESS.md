@@ -48,6 +48,7 @@ accepted release risk at the final GO/NO-GO decision.
 - [x] Database provider/project and region recorded privately
 - [x] Legacy users, teams, seasons, drafts, and games counted
 - [x] Current schema/migration state recorded
+- [x] Production 2025 source preflight passes against the untouched legacy schema
 - [x] Current Vercel deployment and production hostname recorded
 - [x] Isolated production Supabase Auth project created
 - [x] Current Supabase Auth Site URL and redirects recorded
@@ -172,4 +173,5 @@ Notes must contain no credentials or private member information:
 - Production custom SMTP: enabled with the expected Resend sender, host, port, username, and encrypted password; delivery test remains pending
 - Production database deployment recorded privately; provider dashboard identity matched the production connection before backup
 - Fresh owner-only `public`-schema backup created successfully; archive and checksum metadata are retained outside the repository
+- Production legacy-source preflight: passed read-only with 15 users, 168 teams, 150 roster assignments, and 15 expected missing-email warnings; fingerprint retained privately
 ```
