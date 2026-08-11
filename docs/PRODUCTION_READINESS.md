@@ -50,7 +50,7 @@ accepted release risk at the final GO/NO-GO decision.
 - [x] Current schema/migration state recorded
 - [x] Current Vercel deployment and production hostname recorded
 - [x] Isolated production Supabase Auth project created
-- [ ] Current Supabase Auth Site URL and redirects recorded
+- [x] Current Supabase Auth Site URL and redirects recorded
 - [x] Current scheduled jobs recorded
 - [x] No secret or member contact value entered logs or artifacts
 
@@ -165,4 +165,8 @@ Notes must contain no credentials or private member information:
 - Current production application: Vercel `main` at `abf4a79`; hostname `the-10s.vercel.app`
 - Current production schedule: standings sync daily at 06:00 UTC; no draft autopick cron
 - Production Supabase Auth project: `League House Production`, `us-east-1`, active and isolated from development
+- Production Supabase Auth Site URL: `https://league-house.com`
+- Production Supabase Auth redirect allowlist: `https://league-house.com/auth/confirm`
+- Production Auth provider settings match the tested development flow: email enabled, phone disabled, signups and email confirmation enabled
+- Production custom SMTP: not yet configured
 ```
