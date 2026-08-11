@@ -16,14 +16,12 @@ test('the legacy global NFL reset endpoint is not shipped', () => {
 test('Supabase Data API roles cannot access Prisma application tables', () => {
   const sql = readFileSync(migrationPath, 'utf8')
 
-  assert.match(
-    sql,
-    /REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public\s+FROM anon, authenticated, service_role;/i,
-  )
-  assert.match(
-    sql,
-    /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public\s+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES\s+FROM anon, authenticated, service_role;/i,
-  )
+  assert.match(sql, /FROM pg_roles/i)
+  assert.match(sql, /ARRAY\['anon', 'authenticated', 'service_role'\]/i)
+  assert.match(sql, /REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM %I/i)
+  assert.match(sql, /ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public/i)
+  assert.match(sql, /current_user/i)
+  assert.doesNotMatch(sql, /FOR ROLE postgres/i)
 
   const expectedTables = [
     'users',
