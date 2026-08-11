@@ -48,9 +48,9 @@ accepted release risk at the final GO/NO-GO decision.
 - [ ] Database provider/project and region recorded privately
 - [x] Legacy users, teams, seasons, drafts, and games counted
 - [x] Current schema/migration state recorded
-- [ ] Current Vercel deployment and production hostname recorded
+- [x] Current Vercel deployment and production hostname recorded
 - [ ] Current Supabase Auth Site URL and redirects recorded
-- [ ] Current scheduled jobs recorded
+- [x] Current scheduled jobs recorded
 - [x] No secret or member contact value entered logs or artifacts
 
 ## Backup and restored-copy rehearsal
@@ -161,4 +161,7 @@ Notes must contain no credentials or private member information:
 - Production read-only inventory: 15 users, 168 teams, 1 season, 150 drafts, 0 games
 - Production schema: legacy tables present; expansion tables absent
 - Production migration history: completed `20250902141401_init`; repository baseline not yet resolved
+- Current production application: Vercel `main` at `abf4a79`; hostname `the-10s.vercel.app`
+- Current production schedule: standings sync daily at 06:00 UTC; no draft autopick cron
+- Production Supabase Auth project: not yet identified; development Auth must not be reused by accident
 ```
