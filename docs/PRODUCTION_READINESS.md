@@ -8,8 +8,8 @@ repository.
 ## Release identity
 
 - [ ] Release owner identified
-- [ ] Approved Git commit recorded
-- [ ] Current production deployment recorded
+- [x] Approved Git commit recorded
+- [x] Current production deployment recorded
 - [x] Intended commissioner legacy profile confirmed privately
 - [ ] Maintenance/write-freeze window agreed
 - [ ] Rollback owner identified
@@ -101,13 +101,13 @@ accepted release risk at the final GO/NO-GO decision.
 - [x] Resend SMTP works with development Supabase
 - [x] Resend SMTP is configured in production Supabase
 - [x] Supabase email template matches the chosen passwordless-link flow
-- [ ] Production invitation delivery remains disabled
+- [x] Production invitation delivery remains disabled
 
 ## Production cutover
 
 - [x] Backup operation approved
 - [x] Schema/data migration approved
-- [ ] Vercel production deployment approved
+- [x] Vercel production deployment approved
 - [ ] Cloudflare DNS change approved
 - [ ] Supabase Auth URL change approved
 - [ ] Scheduled-job change approved
@@ -117,8 +117,8 @@ accepted release risk at the final GO/NO-GO decision.
 - [x] Fresh backup checksum verified
 - [x] Source fingerprint unchanged at migration apply time
 - [x] Schema and 2025 data migrations reconcile successfully
-- [ ] Approved application commit deployed
-- [ ] Vercel-hostname smoke test passes before DNS cutover
+- [x] Approved application commit deployed
+- [x] Vercel-hostname smoke test passes before DNS cutover
 - [ ] Production Site URL is `https://league-house.com`
 - [ ] Production redirect allowlist uses exact URLs
 - [ ] Commissioner sign-in and authorization pass
@@ -176,5 +176,9 @@ Notes must contain no credentials or private member information:
 - Production legacy-source preflight: passed read-only with 15 users, 168 teams, 150 roster assignments, and 15 expected missing-email warnings; fingerprint retained privately
 - Production schema migration: all six repository migrations recorded as complete; legacy source tables and rows retained
 - Production 2025 migration: reconciliation passed with 15 memberships, 15 participants, 150 roster slots, 168 team records, and 168 eligibility snapshots
-- Production application deployment and environment wiring remain unapproved and were not performed
+- Vercel production deployment: commit `8e86946`, deployment `dpl_DRk8Rys8VFUHF5uW8hcXtTTKciUz`, READY and aliased to `the-10s.vercel.app`
+- Production environment: required database, Supabase, SportsDataIO, Resend, URL, and runtime variables wired; invitation delivery remains disabled
+- Deployment upload excludes all local `.env` files through `.vercelignore`; replacement build completed without the environment-file warning
+- Unauthenticated smoke checks: login returned 200 and dashboard redirected to login on both immutable and aliased Vercel hostnames
+- `league-house.com` has no resolvable DNS yet; Cloudflare/Vercel domain cutover and production passwordless sign-in remain pending
 ```
