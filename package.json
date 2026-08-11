@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "npm run migration:check && node --test --experimental-strip-types src/lib/db/*.test.ts src/lib/draft/*.test.ts src/lib/seasons/*.test.ts src/lib/*.test.ts scripts/lib/*.test.mjs",
+    "test": "npm run migration:check && node --test --experimental-strip-types src/lib/auth/*.test.ts src/lib/db/*.test.ts src/lib/draft/*.test.ts src/lib/seasons/*.test.ts src/lib/*.test.ts scripts/lib/*.test.mjs",
     "postinstall": "prisma generate",
     "db:setup": "node scripts/setup-db.mjs",
     "db:migrate": "prisma migrate dev",
