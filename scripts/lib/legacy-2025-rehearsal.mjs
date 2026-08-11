@@ -121,6 +121,13 @@ export function rankLegacyStandings(users) {
   ))
 }
 
+export function rankLegacyParticipants(users) {
+  return rankLegacyStandings(users).map((standing, index) => ({
+    ...standing,
+    finalRank: index + 1,
+  }))
+}
+
 export function createPreflightReport(data) {
   const { errors, warnings } = validateLegacyData(data)
   return {

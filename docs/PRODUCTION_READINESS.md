@@ -45,7 +45,7 @@ accepted release risk at the final GO/NO-GO decision.
 ## Read-only production inventory
 
 - [x] Exact read-only access approved
-- [ ] Database provider/project and region recorded privately
+- [x] Database provider/project and region recorded privately
 - [x] Legacy users, teams, seasons, drafts, and games counted
 - [x] Current schema/migration state recorded
 - [x] Current Vercel deployment and production hostname recorded
@@ -56,9 +56,9 @@ accepted release risk at the final GO/NO-GO decision.
 
 ## Backup and restored-copy rehearsal
 
-- [ ] Production backup explicitly approved
-- [ ] Backup timestamp, size, and SHA-256 checksum recorded privately
-- [ ] Backup metadata names the dashboard-confirmed provider/deployment and includes only `public`
+- [x] Production backup explicitly approved
+- [x] Backup timestamp, size, and SHA-256 checksum recorded privately
+- [x] Backup metadata names the dashboard-confirmed provider/deployment and includes only `public`
 - [x] Backup restored into an isolated database
 - [x] Restore target proven not to be production
 - [x] Player names retained; emails, auth links, and invitation metadata removed before preview access
@@ -104,7 +104,7 @@ accepted release risk at the final GO/NO-GO decision.
 
 ## Production cutover
 
-- [ ] Backup operation approved
+- [x] Backup operation approved
 - [ ] Schema/data migration approved
 - [ ] Vercel production deployment approved
 - [ ] Cloudflare DNS change approved
@@ -156,7 +156,7 @@ Notes must contain no credentials or private member information:
 - Season navigation displayed the correct 2025 completed view
 - College team pool: 138 active FBS, 127 auto-approved, 11 review exceptions
 - Pac-12: eight expected 2026 members
-- Automated evidence: lint, typecheck, 98-test suite, migration checksum, production build
+- Automated evidence: lint, typecheck, 102-test suite, migration checksum, production build
 - Synthetic migration rehearsal: passed without database access or writes
 - Manual multi-user draft rehearsal: skipped by release owner; remains unchecked
 - Autopick operations: browser-triggered model accepted; no external scheduler for initial launch
@@ -170,4 +170,6 @@ Notes must contain no credentials or private member information:
 - Production Supabase Auth redirect allowlist: `https://league-house.com/auth/confirm`
 - Production Auth provider settings match the tested development flow: email enabled, phone disabled, signups and email confirmation enabled
 - Production custom SMTP: enabled with the expected Resend sender, host, port, username, and encrypted password; delivery test remains pending
+- Production database deployment recorded privately; provider dashboard identity matched the production connection before backup
+- Fresh owner-only `public`-schema backup created successfully; archive and checksum metadata are retained outside the repository
 ```

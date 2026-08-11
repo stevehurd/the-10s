@@ -5,6 +5,7 @@ import {
   createPreflightReport,
   legacyFingerprint,
   legacyRosterNickname,
+  rankLegacyParticipants,
   rankLegacyStandings,
   reconcileMigrationSnapshot,
   validateLegacyData,
@@ -95,6 +96,17 @@ test('legacy final ranks use best single NFL team, then best single college team
   const strongerCollege = user('Stronger college', [8, 2], [4, 1, 1, 1, 1, 1, 0, 0])
   const weakerCollege = user('Weaker college', [8, 2], [3, 2, 1, 1, 1, 1, 0, 0])
   assert.equal(rankLegacyStandings([weakerCollege, strongerCollege])[0].user.name, 'Stronger college')
+})
+
+test('migration participant ranks are one-based and follow the legacy standings order', () => {
+  const legacy = buildLegacy2025Fixture()
+  const participants = rankLegacyParticipants(legacy.users)
+
+  assert.deepEqual(participants.map(({ finalRank }) => finalRank), [1, 2, 3])
+  assert.deepEqual(
+    participants.map(({ user }) => user.id),
+    rankLegacyStandings(legacy.users).map(({ user }) => user.id),
+  )
 })
 
 test('reconciliation reports roster, totals, team records, and finalization drift', () => {

@@ -5,7 +5,7 @@ import {
   createPreflightReport,
   legacyFingerprint,
   legacyRosterNickname,
-  rankLegacyStandings,
+  rankLegacyParticipants,
   reconcileMigrationSnapshot,
 } from './lib/legacy-2025-rehearsal.mjs'
 
@@ -71,7 +71,7 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
     : 'Commissioner email does not match a 2025 user')
   const commissionerUserId = commissioner.id
 
-  const standings = rankLegacyStandings(users)
+  const standings = rankLegacyParticipants(users)
 
   const migratedAt = new Date()
   await prisma.$transaction(async (tx) => {
@@ -162,7 +162,7 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
             seasonId: season.id,
             poolSeatId: seat.id,
             userId: user.id,
-            finalRank: index + 1,
+            finalRank: standing.finalRank,
             totalWins: standing.totalWins,
             nflWins: standing.nflWins,
             collegeWins: standing.collegeWins,
@@ -172,7 +172,7 @@ async function migrate({ season, users, teams }, sourceFingerprint) {
         participant = await tx.seasonParticipant.update({
           where: { id: participant.id },
           data: {
-            finalRank: index + 1,
+            finalRank: standing.finalRank,
             totalWins: standing.totalWins,
             nflWins: standing.nflWins,
             collegeWins: standing.collegeWins,
