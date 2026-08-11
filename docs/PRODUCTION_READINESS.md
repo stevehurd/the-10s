@@ -16,14 +16,18 @@ repository.
 
 ## Local and automated verification
 
-- [ ] Lint passes without new warnings
-- [ ] Type checking passes
-- [ ] Full test suite passes
-- [ ] Prisma migration-history checksum check passes
-- [ ] Synthetic 2025 migration rehearsal passes
-- [ ] No unrelated working-tree changes are included
+- [x] Lint passes without new warnings
+- [x] Type checking passes
+- [x] Full test suite passes
+- [x] Prisma migration-history checksum check passes
+- [x] Synthetic 2025 migration rehearsal passes
+- [x] No unrelated working-tree changes are included
 
 ## Human draft rehearsal
+
+Release owner elected to skip this manual rehearsal for checkpoint `6e91c61`
+on 2026-08-11. The items remain deliberately unchecked and must be treated as
+accepted release risk at the final GO/NO-GO decision.
 
 - [ ] Commissioner and member use separate authenticated browser sessions
 - [ ] Waiting member can star teams and queue one private pick
@@ -54,34 +58,34 @@ repository.
 - [ ] Production backup explicitly approved
 - [ ] Backup timestamp, size, and SHA-256 checksum recorded privately
 - [ ] Backup metadata names the dashboard-confirmed provider/deployment and includes only `public`
-- [ ] Backup restored into an isolated database
-- [ ] Restore target proven not to be production
-- [ ] Player names retained; emails, auth links, and invitation metadata removed before preview access
-- [ ] Reviewed Prisma migrations deploy successfully to the restored copy
-- [ ] 2025 preflight passes and source fingerprint is saved
-- [ ] 2025 data migration applies successfully to the restored copy
-- [ ] All 15 legacy profiles reconcile
-- [ ] Every participant has ten unique numbered roster slots
-- [ ] Every roster reconciles to exactly 2 NFL and 8 FBS teams
-- [ ] Team ownership and 2025 W-L-T values match the source
-- [ ] Every participant's total wins match the legacy leaderboard
-- [ ] Exactly one intended commissioner membership exists
-- [ ] Completed 2025 records reject mutation
-- [ ] 2026 FBS sync uses SportsDataIO `LeagueHierarchy`
-- [ ] Unchanged 2026 FBS teams auto-approve and only additions/removals/detail changes require review
-- [ ] 2026 provider result reports 138 active FBS teams and the expected eight-team Pac-12
-- [ ] Re-running the 2026 FBS sync preserves audited commissioner overrides
-- [ ] 2025 eligibility snapshots and rosters remain unchanged after the 2026 sync
+- [x] Backup restored into an isolated database
+- [x] Restore target proven not to be production
+- [x] Player names retained; emails, auth links, and invitation metadata removed before preview access
+- [x] Reviewed Prisma migrations deploy successfully to the restored copy
+- [x] 2025 preflight passes and source fingerprint is saved
+- [x] 2025 data migration applies successfully to the restored copy
+- [x] All 15 legacy profiles reconcile
+- [x] Every participant has ten unique numbered roster slots
+- [x] Every roster reconciles to exactly 2 NFL and 8 FBS teams
+- [x] Team ownership and 2025 W-L-T values match the source
+- [x] Every participant's total wins match the legacy leaderboard
+- [x] Exactly one intended commissioner membership exists
+- [x] Completed 2025 records reject mutation
+- [x] 2026 FBS sync uses SportsDataIO `LeagueHierarchy`
+- [x] Unchanged 2026 FBS teams auto-approve and only additions/removals/detail changes require review
+- [x] 2026 provider result reports 138 active FBS teams and the expected eight-team Pac-12
+- [x] Re-running the 2026 FBS sync preserves audited commissioner overrides
+- [x] 2025 eligibility snapshots and rosters remain unchanged after the 2026 sync
 - [ ] Restore-based rollback has been tested
 
 ## Staging
 
-- [ ] Candidate deployed with isolated non-production Supabase
-- [ ] Preview/staging environment contains no production credentials
-- [ ] Passwordless sign-in works
-- [ ] Synthetic legacy-player invitation and claim works
+- [x] Candidate deployed with isolated non-production Supabase
+- [x] Preview/staging environment contains no production credentials
+- [x] Passwordless sign-in works
+- [x] Synthetic legacy-player invitation and claim works
 - [ ] Complete multi-user draft rehearsal passes
-- [ ] Standings synchronization safety checks pass
+- [x] Standings synchronization safety checks pass
 - [ ] Authenticated phone and desktop smoke tests pass
 
 ## Domain and transactional email
@@ -92,8 +96,8 @@ repository.
 - [ ] TLS is valid on both hostnames
 - [ ] `mail.league-house.com` passes Resend SPF and DKIM verification
 - [ ] Authentication email open/link tracking is disabled
-- [ ] Resend SMTP works with development Supabase
-- [ ] Supabase email template matches the chosen passwordless-link flow
+- [x] Resend SMTP works with development Supabase
+- [x] Supabase email template matches the chosen passwordless-link flow
 - [ ] Production invitation delivery remains disabled
 
 ## Production cutover
@@ -142,5 +146,15 @@ repository.
 Notes must contain no credentials or private member information:
 
 ```text
-
+2026-08-11 staging release candidate
+- Git checkpoint: 6e91c61
+- Vercel commit status: successful
+- Staging hostname and immutable preview returned identical Next.js asset manifests
+- Authenticated staging dashboard loaded with migrated 2025 and preseason 2026
+- Season navigation displayed the correct 2025 completed view
+- College team pool: 138 active FBS, 127 auto-approved, 11 review exceptions
+- Pac-12: eight expected 2026 members
+- Automated evidence: lint, typecheck, 98-test suite, migration checksum, production build
+- Synthetic migration rehearsal: passed without database access or writes
+- Manual multi-user draft rehearsal: skipped by release owner; remains unchecked
 ```
