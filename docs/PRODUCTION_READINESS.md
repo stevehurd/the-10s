@@ -49,6 +49,7 @@ accepted release risk at the final GO/NO-GO decision.
 - [x] Legacy users, teams, seasons, drafts, and games counted
 - [x] Current schema/migration state recorded
 - [x] Current Vercel deployment and production hostname recorded
+- [x] Isolated production Supabase Auth project created
 - [ ] Current Supabase Auth Site URL and redirects recorded
 - [x] Current scheduled jobs recorded
 - [x] No secret or member contact value entered logs or artifacts
@@ -163,5 +164,5 @@ Notes must contain no credentials or private member information:
 - Production migration history: completed `20250902141401_init`; repository baseline not yet resolved
 - Current production application: Vercel `main` at `abf4a79`; hostname `the-10s.vercel.app`
 - Current production schedule: standings sync daily at 06:00 UTC; no draft autopick cron
-- Production Supabase Auth project: not yet identified; development Auth must not be reused by accident
+- Production Supabase Auth project: `League House Production`, `us-east-1`, active and isolated from development
 ```
