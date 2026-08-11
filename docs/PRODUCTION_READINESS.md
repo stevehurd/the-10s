@@ -97,6 +97,7 @@ repository.
 - [ ] Cloudflare DNS change approved
 - [ ] Supabase Auth URL change approved
 - [ ] Scheduled-job change approved
+- [ ] Production autopick resilience chosen: Vercel Pro cron, external scheduler, or documented browser-only acceptance
 - [ ] Invitation enablement approved
 - [ ] Legacy application write freeze started
 - [ ] Fresh backup checksum verified
@@ -111,6 +112,7 @@ repository.
 - [ ] Historical 2025 standings, rosters, and totals pass spot checks
 - [ ] Keep/Release writes only to the intended upcoming season
 - [ ] Scheduled jobs enabled and observed
+- [ ] Server-side autopick worker observed, or browser-only limitation explicitly accepted for the official draft
 - [ ] One invitation successfully completes before bulk invitations
 - [ ] Write freeze ended only after every required check passes
 

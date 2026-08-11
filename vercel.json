@@ -1,10 +1,6 @@
 {
   "crons": [
     {
-      "path": "/api/cron/draft-autopicks",
-      "schedule": "* * * * *"
-    },
-    {
       "path": "/api/cron/sync-standings",
       "schedule": "0 6 * * *"
     }
