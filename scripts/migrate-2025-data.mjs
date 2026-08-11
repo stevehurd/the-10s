@@ -13,6 +13,7 @@ const prisma = new PrismaClient()
 const args = new Set(process.argv.slice(2))
 const apply = args.has('--apply')
 const backupConfirmed = args.has('--backup-confirmed')
+const summaryOnly = args.has('--summary-only')
 const commissionerFlagIndex = process.argv.indexOf('--commissioner-email')
 const commissionerEmail =
   commissionerFlagIndex >= 0 ? process.argv[commissionerFlagIndex + 1]?.trim().toLowerCase() : null
@@ -270,20 +271,28 @@ async function main() {
   const report = createPreflightReport(data)
   const sourceFingerprint = report.sourceFingerprint
 
-  console.log(`2025 season: ${report.season.name}`)
+  console.log(summaryOnly ? `2025 season year: ${report.season.year}` : `2025 season: ${report.season.name}`)
   console.log(`Users: ${report.counts.users}`)
   console.log(`Teams: ${report.counts.teams}`)
   console.log(`Roster assignments: ${report.counts.rosterAssignments}`)
   console.log(`Source fingerprint: ${sourceFingerprint}`)
 
   if (report.warnings.length > 0) {
-    console.warn('\nPreflight warnings:')
-    for (const warning of report.warnings) console.warn(`- ${warning}`)
+    if (summaryOnly) {
+      console.warn(`Preflight warnings: ${report.warnings.length} (details suppressed)`)
+    } else {
+      console.warn('\nPreflight warnings:')
+      for (const warning of report.warnings) console.warn(`- ${warning}`)
+    }
   }
 
   if (!report.passed) {
-    console.error('\nPreflight failed:')
-    for (const error of report.errors) console.error(`- ${error}`)
+    if (summaryOnly) {
+      console.error(`Preflight failed with ${report.errors.length} error(s); details suppressed.`)
+    } else {
+      console.error('\nPreflight failed:')
+      for (const error of report.errors) console.error(`- ${error}`)
+    }
     process.exitCode = 1
     return
   }
