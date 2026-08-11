@@ -116,12 +116,20 @@ Run `npm run migration:check` before every rehearsal or deployment. It verifies 
 
 Use `npm run migration:inspect` only with an explicitly selected credential source. It performs read-only information-schema, aggregate table-count, and `_prisma_migrations` queries. The report contains no row-level member data, contact values, connection values, or credentials. Legacy databases without `_prisma_migrations` are reported as such rather than treated as an inspection failure.
 
-The 2025 database was created with `prisma db push` and has no reliable Prisma migration history. The migration directory therefore contains:
+The production inventory on 2026-08-11 found one completed legacy Prisma
+migration named `20250902141401_init`. That migration file was never committed
+to this repository, but the inspected production schema and restored-copy
+rehearsal match the repository-owned legacy baseline. Preserve the production
+history row; do not delete it or mark it rolled back.
+
+The repository migration directory therefore begins with:
 
 1. `20250801000000_legacy_baseline`: the original schema for fresh databases.
 2. `20260807000000_expansion_foundation`: additive expansion tables and columns.
 
-For an existing verified 2025 database, mark only the legacy baseline as already applied:
+For an existing verified 2025 database, mark only the repository-owned legacy
+baseline as already applied. This adds the reconciliation row without executing
+its table-creation SQL; the existing `20250902141401_init` row remains intact:
 
 ```sh
 npx prisma migrate resolve --applied 20250801000000_legacy_baseline
@@ -131,6 +139,11 @@ npx prisma migrate deploy
 For a fresh empty development database, run `npx prisma migrate deploy` without resolving the baseline.
 
 Never use `prisma db push` for this migration.
+
+The restored staging rehearsal successfully preserved
+`20250902141401_init`, resolved `20250801000000_legacy_baseline`, and deployed
+the additive migrations. A fresh production backup and source fingerprint are
+still required before repeating that sequence in production.
 
 ## Data preflight
 

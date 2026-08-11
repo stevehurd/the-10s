@@ -44,14 +44,14 @@ accepted release risk at the final GO/NO-GO decision.
 
 ## Read-only production inventory
 
-- [ ] Exact read-only access approved
+- [x] Exact read-only access approved
 - [ ] Database provider/project and region recorded privately
-- [ ] Legacy users, teams, seasons, drafts, and games counted
-- [ ] Current schema/migration state recorded
+- [x] Legacy users, teams, seasons, drafts, and games counted
+- [x] Current schema/migration state recorded
 - [ ] Current Vercel deployment and production hostname recorded
 - [ ] Current Supabase Auth Site URL and redirects recorded
 - [ ] Current scheduled jobs recorded
-- [ ] No secret or member contact value entered logs or artifacts
+- [x] No secret or member contact value entered logs or artifacts
 
 ## Backup and restored-copy rehearsal
 
@@ -158,4 +158,7 @@ Notes must contain no credentials or private member information:
 - Synthetic migration rehearsal: passed without database access or writes
 - Manual multi-user draft rehearsal: skipped by release owner; remains unchecked
 - Autopick operations: browser-triggered model accepted; no external scheduler for initial launch
+- Production read-only inventory: 15 users, 168 teams, 1 season, 150 drafts, 0 games
+- Production schema: legacy tables present; expansion tables absent
+- Production migration history: completed `20250902141401_init`; repository baseline not yet resolved
 ```
