@@ -15,12 +15,12 @@ export default function SeasonSelector({
   selectedSeasonId: string
 }) {
   return (
-    <Form action="/" scroll={false}>
+    <Form action="/" className="w-full sm:w-auto" scroll={false}>
       <label className="text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="season">
         Season
       </label>
       <select
-        className="mt-1 block rounded-xl border border-white/10 bg-slate-900 px-4 py-2"
+        className="mt-1 block min-h-11 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 sm:w-auto"
         id="season"
         name="season"
         onChange={(event) => event.currentTarget.form?.requestSubmit()}

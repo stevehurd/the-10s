@@ -93,9 +93,9 @@ export default function PreparationBoard({ seasonId, teams }: { seasonId: string
 
       <section className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
         <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
-          <input className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3" onChange={(event) => setQuery(event.target.value)} placeholder="Search teams or conferences" type="search" value={query} />
-          <div className="flex gap-2">
-            {(['ALL', 'NFL', 'COLLEGE'] as const).map((value) => <button className={`rounded-lg px-3 py-2 text-sm font-bold ${league === value ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-300'}`} key={value} onClick={() => setLeague(value)} type="button">{value === 'COLLEGE' ? 'College' : value === 'ALL' ? 'All' : 'NFL'}</button>)}
+          <input className="min-h-11 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3" onChange={(event) => setQuery(event.target.value)} placeholder="Search teams or conferences" type="search" value={query} />
+          <div className="grid grid-cols-3 gap-2 lg:flex">
+            {(['ALL', 'NFL', 'COLLEGE'] as const).map((value) => <button className={`min-h-10 rounded-lg px-3 py-2 text-sm font-bold ${league === value ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-300'}`} key={value} onClick={() => setLeague(value)} type="button">{value === 'COLLEGE' ? 'College' : value === 'ALL' ? 'All' : 'NFL'}</button>)}
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-300"><input checked={showUnavailable} onChange={(event) => setShowUnavailable(event.target.checked)} type="checkbox" /> Show kept/pending teams</label>
         </div>

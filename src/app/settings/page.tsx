@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
-import ProductHeader from '@/components/product-header'
+import MemberHeader from '@/components/member-header'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
 import { getLatestPoolSeat } from '@/lib/player-settings'
 import { editableRosterNickname } from '@/lib/player-settings-rules'
@@ -21,15 +21,17 @@ export default async function SettingsPage() {
       name: membership.pool.name,
       rosterNickname: editableRosterNickname(participant?.poolSeat.label),
       rosterSeason: participant?.season.year ?? null,
+      seasonId: participant?.season.id,
     }
   }))
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      <ProductHeader
-        action={<form action="/auth/signout" method="post"><button className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-slate-300 hover:bg-white/5" type="submit">Sign out</button></form>}
-        context={context.appUser.name}
-        nav={[{ href: '/', label: 'Dashboard' }, { href: '/settings', label: 'Player settings', active: true }]}
+      <MemberHeader
+        active="settings"
+        commissioner={context.appUser.memberships.some((membership) => membership.role === 'COMMISSIONER')}
+        seasonId={pools[0]?.seasonId}
+        userName={context.appUser.name}
       />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <Link className="text-sm font-bold text-slate-400 hover:text-white" href="/">← Back to dashboard</Link>

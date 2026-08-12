@@ -8,7 +8,7 @@ export async function getLatestPoolSeat(userId: string, poolId: string) {
     select: {
       poolSeatId: true,
       poolSeat: { select: { label: true } },
-      season: { select: { year: true } },
+      season: { select: { id: true, year: true } },
     },
   })
 }
