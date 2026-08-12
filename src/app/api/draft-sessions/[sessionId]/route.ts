@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { authorizeApi } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
 import { draftErrorResponse } from '@/lib/draft/http'
+import { canMemberEnterDraftRoom } from '@/lib/draft/lifecycle'
 import { getDraftRoomState, updateDraftLogistics } from '@/lib/draft/service'
 
 export async function GET(
@@ -19,6 +20,15 @@ export async function GET(
 
     const authorization = await authorizeApi('MEMBER', session.season.poolId)
     if (!authorization.authorized) return authorization.response
+    if (
+      authorization.membership.role !== 'COMMISSIONER' &&
+      !canMemberEnterDraftRoom(session)
+    ) {
+      return Response.json(
+        { error: session.startsAt ? `The draft room opens at ${session.startsAt.toLocaleString('en-US')}` : 'The draft room is not scheduled yet' },
+        { status: 403 },
+      )
+    }
 
     const state = await getDraftRoomState(sessionId, authorization.appUser.id)
     return Response.json({

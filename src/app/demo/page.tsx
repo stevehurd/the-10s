@@ -118,6 +118,7 @@ function createDemoState(): DraftState {
       mode: 'REHEARSAL',
       status: 'LIVE',
       pickSeconds: 90,
+      startsAt: null,
       meetingUrl: null,
       currentTurnIndex: current.overallIndex,
       revision: 3,

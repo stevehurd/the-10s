@@ -1,7 +1,7 @@
 export type PreparationEligibilityStatus = 'PENDING' | 'REVIEW' | 'APPROVED' | 'INACTIVE'
 export type PreparationHolder = {
   name: string
-  retentionChoice: 'KEEP' | 'PENDING'
+  retentionChoice: 'KEEP' | 'PENDING' | 'HIDDEN'
 }
 
 export function getPreparationTeamState(
@@ -22,7 +22,9 @@ export function getPreparationTeamState(
     held: Boolean(holder),
     unavailableReason: [
       holder
-        ? holder.retentionChoice === 'KEEP'
+        ? holder.retentionChoice === 'HIDDEN'
+          ? 'Keeper status hidden until every player locks selections'
+          : holder.retentionChoice === 'KEEP'
           ? `Kept by ${holder.name}`
           : `Keeper decision pending for ${holder.name}`
         : null,

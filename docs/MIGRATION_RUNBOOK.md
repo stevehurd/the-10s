@@ -74,7 +74,7 @@ private operator record. Never commit a completed copy of that template.
 Restore the archive into an explicitly approved, disposable staging database.
 Do not restore it into the production database. Replacing synthetic staging data
 is allowed only when the repository owner explicitly approves that destructive
-rehearsal step; synthetic draft-harness data can be recreated later.
+rehearsal step; isolated demo-draft data can be recreated later.
 
 Retain these source values exactly so the owner can visually and numerically
 compare the rehearsal with the 2025 application:

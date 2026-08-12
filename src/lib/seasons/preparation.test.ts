@@ -38,3 +38,14 @@ test('undecided inherited teams remain held without being described as kept', ()
   assert.equal(state.held, true)
   assert.equal(state.unavailableReason, 'Keeper decision pending for Alex')
 })
+
+test('private keeper decisions hold inherited teams without revealing the choice or owner', () => {
+  const state = getPreparationTeamState('APPROVED', {
+    name: 'Alex',
+    retentionChoice: 'HIDDEN',
+  })
+
+  assert.equal(state.available, false)
+  assert.equal(state.held, true)
+  assert.equal(state.unavailableReason, 'Keeper status hidden until every player locks selections')
+})

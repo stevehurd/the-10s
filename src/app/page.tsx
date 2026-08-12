@@ -8,6 +8,7 @@ import TeamMark from '@/components/team-mark'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
 import { editableRosterNickname, playerDisplayName } from '@/lib/player-settings-rules'
+import { areKeeperSelectionsRevealed } from '@/lib/seasons/keeper-visibility'
 import { compareStandings } from '@/lib/standings-ranking'
 
 export const dynamic = 'force-dynamic'
@@ -156,6 +157,7 @@ export default async function Home({
       hasNickname: Boolean(editableRosterNickname(participant.poolSeat.label)),
       isViewer: participant.userId === context.appUser.id,
       submitted: Boolean(participant.decisionsSubmittedAt),
+      locked: Boolean(participant.decisionsLockedAt),
       keptTeams: participant.rosterSlots
         .filter((slot) => slot.retentionChoice === 'KEEP' && slot.team)
         .map((slot) => ({
@@ -167,7 +169,8 @@ export default async function Home({
           slot: slot.number,
         })),
     }))
-  const submittedKeeperCount = keeperTracker.filter((participant) => participant.submitted).length
+  const lockedKeeperCount = keeperTracker.filter((participant) => participant.locked).length
+  const keeperSelectionsRevealed = areKeeperSelectionsRevealed(participants)
   const rosterRecordByTeam = isPreseason ? priorRecordByTeam : recordByTeam
   const champion = isComplete ? standings[0] ?? null : null
   const championNickname = champion ? editableRosterNickname(champion.poolSeat.label) : null
@@ -286,22 +289,23 @@ export default async function Home({
           <section className="mb-7 rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><h3 className="text-lg font-semibold">Round-one draft order</h3><p className="text-sm text-slate-400">Last place from last season picks first; round two reverses the order.</p></div><span className="text-xs font-bold uppercase tracking-wider text-slate-500">Snake draft</span></div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {keeperTracker.map((participant, index) => <div className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${participant.isViewer ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-slate-950/30'}`} key={participant.id}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-sm font-black">{index + 1}</span><div className="min-w-0"><p className="truncate font-semibold">{participant.name}{participant.isViewer ? ' · You' : ''}</p>{participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}</div></div>)}
+              {keeperTracker.map((participant, index) => <div className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${participant.isViewer ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-slate-950/30'}`} key={participant.id}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-sm font-black">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate font-semibold">{participant.name}{participant.isViewer ? ' · You' : ''}</p>{participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}</div><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${participant.locked ? 'bg-emerald-300/15 text-emerald-200' : 'bg-amber-300/15 text-amber-200'}`}>{participant.locked ? 'Keepers locked' : 'Not locked'}</span></div>)}
             </div>
+            <p className="mt-3 text-right text-xs font-semibold text-slate-500">{lockedKeeperCount} of {keeperTracker.length} locked</p>
           </section>
         ) : null}
 
-        {showKeeperTracker ? (
+        {showKeeperTracker && keeperSelectionsRevealed ? (
           <section className="mb-7 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
             <div className="flex flex-col justify-between gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center">
               <div>
-                <h3 className="text-lg font-semibold">Keep/Release tracker</h3>
+                <h3 className="text-lg font-semibold">Locked keeper selections</h3>
                 <p className="text-sm text-slate-400">
-                  Submitted keeper lists are visible to everyone in the league.
+                  Every player has locked their choices, so keeper selections are now visible.
                 </p>
               </div>
               <div className="shrink-0 rounded-full bg-emerald-300/10 px-3 py-1.5 text-sm font-bold text-emerald-300">
-                {submittedKeeperCount} of {keeperTracker.length} submitted
+                All selections locked
               </div>
             </div>
             <div className="divide-y divide-white/5">
@@ -314,16 +318,14 @@ export default async function Home({
                       </p>
                       {participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}
                       <p className="mt-0.5 text-xs text-slate-500">
-                        {participant.submitted
-                          ? `${participant.keptTeams.length} team${participant.keptTeams.length === 1 ? '' : 's'} kept`
-                          : 'Keeper choices remain private until submitted'}
+                        {`${participant.keptTeams.length} team${participant.keptTeams.length === 1 ? '' : 's'} kept`}
                       </p>
                     </div>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${participant.submitted ? 'bg-emerald-300/15 text-emerald-200' : 'bg-amber-300/15 text-amber-200'}`}>
-                      {participant.submitted ? 'Submitted' : 'In progress'}
+                    <span className="shrink-0 rounded-full bg-emerald-300/15 px-2.5 py-1 text-xs font-bold text-emerald-200">
+                      Locked
                     </span>
                   </div>
-                  {participant.submitted ? (
+                  {participant.locked ? (
                     <div className="border-t border-white/5 px-4 pb-4 pt-3 sm:px-5">
                       {participant.keptTeams.length > 0 ? (
                         <div className="flex flex-wrap gap-2">

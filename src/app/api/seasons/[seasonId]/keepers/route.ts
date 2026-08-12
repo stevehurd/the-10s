@@ -34,12 +34,15 @@ export async function GET(
       : []
     const recordByTeam = new Map(previousRecords.map((record) => [record.teamId, record]))
 
+    const viewerParticipant = participants.find(
+      (participant) => participant.userId === authorization.appUser.id,
+    )
+
     return NextResponse.json({
       season,
-      viewerParticipantId:
-        participants.find((participant) => participant.userId === authorization.appUser.id)?.id ?? null,
+      viewerParticipantId: viewerParticipant?.id ?? null,
       viewerIsCommissioner: authorization.membership.role === 'COMMISSIONER',
-      participants: participants.map((participant) => ({
+      participants: viewerParticipant ? [viewerParticipant].map((participant) => ({
         ...participant,
         rosterSlots: participant.rosterSlots.map((slot) => ({
           ...slot,
@@ -53,7 +56,7 @@ export async function GET(
               : null
             : null,
         })),
-      })),
+      })) : [],
     })
   } catch (error) {
     return draftErrorResponse(error)
@@ -90,6 +93,8 @@ export async function POST(
       actorIsCommissioner: authorization.membership.role === 'COMMISSIONER',
     })
     revalidatePath('/')
+    revalidatePath('/admin/draft')
+    revalidatePath(`/admin/seasons/${seasonId}/setup`)
     revalidatePath(`/seasons/${seasonId}/keepers`)
     return NextResponse.json(participant)
   } catch (error) {

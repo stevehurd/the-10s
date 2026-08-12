@@ -21,6 +21,7 @@ export default async function DraftAdminPage() {
       participants: {
         select: {
           decisionsSubmittedAt: true,
+          decisionsLockedAt: true,
           rosterSlots: { select: { inheritedTeamId: true, retentionChoice: true } },
         },
       },
@@ -44,12 +45,9 @@ export default async function DraftAdminPage() {
   })
 
   const data = seasons.map((season) => {
-    const inheritedParticipants = season.participants.filter((participant) =>
-      participant.rosterSlots.some((slot) => slot.inheritedTeamId),
-    )
-    const unresolvedChoices = inheritedParticipants.filter(
+    const unresolvedChoices = season.participants.filter(
       (participant) =>
-        !participant.decisionsSubmittedAt ||
+        !participant.decisionsLockedAt ||
         participant.rosterSlots.some(
           (slot) => slot.inheritedTeamId && slot.retentionChoice === 'PENDING',
         ),

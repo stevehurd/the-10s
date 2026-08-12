@@ -56,7 +56,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
     (session) => session.mode === 'OFFICIAL' && session.status !== 'CANCELED',
   ) ?? null
   const demoSessions = season?.sessions.filter(
-    (session) => session.mode === 'REHEARSAL' && !session.name.startsWith('Harness run'),
+    (session) => session.mode === 'REHEARSAL',
   ) ?? []
 
   const ready = Boolean(
@@ -68,6 +68,10 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
 
   async function createSession(mode: 'REHEARSAL' | 'OFFICIAL') {
     if (!season) return
+    if (mode === 'OFFICIAL' && !draftStartsAt) {
+      setMessage('Choose the official draft date and time before scheduling it.')
+      return
+    }
     setBusy(`create-${mode}`)
     setMessage(null)
     const pickSeconds = mode === 'OFFICIAL' ? officialPickSeconds : demoPickSeconds
@@ -185,8 +189,8 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h3 className="font-bold">1. Confirm draft readiness</h3>
-                  <p className="mt-1 text-sm text-slate-600">Every item must be ready before a draft can be created.</p>
+                  <h3 className="font-bold">1. Track activation readiness</h3>
+                  <p className="mt-1 text-sm text-slate-600">These items must be complete when the scheduled draft time arrives.</p>
                 </div>
                 <span className={`inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-slate-300`}>
                   <span className={`h-2 w-2 rounded-full ${ready ? 'bg-blue-500' : 'bg-amber-300'}`} />
@@ -200,7 +204,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
               </div>
               {!ready ? (
                 <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                  Finish keeper submissions and eligibility reviews before creating or testing the draft.
+                  The official draft can be scheduled now. Finish keeper locks and eligibility reviews before it starts.
                 </p>
               ) : null}
             </div>
@@ -217,7 +221,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
                 )
               ) : (
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <label className="text-sm font-semibold">Draft date and time<input className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5" type="datetime-local" value={draftStartsAt} onChange={(event) => setDraftStartsAt(event.target.value)} /></label>
+                  <label className="text-sm font-semibold">Draft date and time<input className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5" type="datetime-local" value={draftStartsAt} onInput={(event) => setDraftStartsAt(event.currentTarget.value)} /></label>
                   <label className="text-sm font-semibold">Video call link (optional)<input autoCapitalize="none" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5" inputMode="url" placeholder="meet.google.com/..." spellCheck={false} type="url" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} onBlur={(event) => setMeetingUrl(normalizeMeetingUrl(event.target.value) ?? '')} /><span className="mt-1 block text-xs font-normal text-slate-500">https:// is added automatically.</span></label>
                   <label className="text-sm font-semibold md:max-w-[180px]">Pick clock (seconds)<input className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5" max={900} min={10} type="number" value={officialPickSeconds} onChange={(event) => setOfficialPickSeconds(Number(event.target.value))} /></label>
                 </div>
@@ -242,9 +246,6 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
                     <Link href={`/draft/${officialSession.id}`} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold">
                       Open official draft room
                     </Link>
-                    {officialSession.status === 'SCHEDULED' && (
-                      <ActionButton disabled={busy !== null} onClick={() => control(officialSession.id, 'START')}>Start draft</ActionButton>
-                    )}
                     {officialSession.status === 'LIVE' && (
                       <ActionButton disabled={busy !== null} onClick={() => control(officialSession.id, 'PAUSE')}>Pause draft</ActionButton>
                     )}
@@ -264,9 +265,9 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
                 </div>
               ) : (
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm text-slate-600">Create the official draft after the league is ready.</p>
-                  <button className="rounded-lg bg-blue-600 px-5 py-2.5 font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={!ready || busy !== null} onClick={() => createSession('OFFICIAL')}>
-                    {busy === 'create-OFFICIAL' ? 'Creating…' : 'Create official draft'}
+                  <p className="text-sm text-slate-600">Publish the date and time now; the draft board will be generated when the draft opens.</p>
+                  <button className="rounded-lg bg-blue-600 px-5 py-2.5 font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={season.participantCount === 0 || busy !== null} onClick={() => createSession('OFFICIAL')}>
+                    {busy === 'create-OFFICIAL' ? 'Scheduling…' : 'Schedule official draft'}
                   </button>
                 </div>
               )}
@@ -280,15 +281,12 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Commissioner testing</p>
               <h2 className="mt-1 text-xl font-bold">Demo drafts</h2>
-              <p className="mt-1 text-sm text-slate-600">Practice the complete draft flow using this season’s real order, keepers, team pool, clock, and autopick rules. Demo picks never affect official rosters.</p>
+              <p className="mt-1 text-sm text-slate-600">Create an isolated draft using the current players and base order with a fresh set of randomly generated keepers. Demo picks never affect official rosters or keeper choices.</p>
             </div>
             <div className="flex flex-wrap items-end gap-3">
-              <Link className="rounded-xl border border-blue-500/40 px-4 py-2 text-sm font-semibold text-blue-300" href="/admin/draft/harness">
-                Open Draft Test Lab
-              </Link>
               <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Demo pick clock<input className="mt-1 block w-36 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" max={900} min={10} type="number" value={demoPickSeconds} onChange={(event) => setDemoPickSeconds(Number(event.target.value))} /></label>
-              <button className="rounded-xl border border-slate-400 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-50" disabled={!ready || busy !== null} onClick={() => createSession('REHEARSAL')}>
-                {busy === 'create-REHEARSAL' ? 'Creating…' : 'Create demo draft'}
+              <button className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={season.participantCount === 0 || busy !== null} onClick={() => createSession('REHEARSAL')}>
+                {busy === 'create-REHEARSAL' ? 'Seeding demo…' : 'Create randomized demo'}
               </button>
             </div>
           </div>
@@ -367,22 +365,10 @@ function ScheduleEditor({ session }: { session: SessionSummary }) {
 
   return (
     <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 md:grid-cols-[1fr_1fr_130px_auto] md:items-end">
-      <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Start time<input className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label>
+      <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Start time<input className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" type="datetime-local" value={startsAt} onInput={(event) => setStartsAt(event.currentTarget.value)} /></label>
       <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Video call URL<input autoCapitalize="none" className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" inputMode="url" placeholder="https://..." spellCheck={false} type="url" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} onBlur={(event) => setMeetingUrl(normalizeMeetingUrl(event.target.value) ?? '')} /><span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-slate-500">https:// is added automatically.</span></label>
       <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Pick seconds<input className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" max={900} min={10} type="number" value={pickSeconds} onChange={(event) => setPickSeconds(Number(event.target.value))} /></label>
-      <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save logistics'}</button>
-      <button
-        className="justify-self-start text-xs font-semibold text-slate-600 underline underline-offset-2 disabled:opacity-50 md:col-span-4"
-        disabled={saving || (!startsAt && !meetingUrl)}
-        onClick={() => {
-          setStartsAt('')
-          setMeetingUrl('')
-          setMessage('Schedule fields cleared. Select Save logistics to publish the change.')
-        }}
-        type="button"
-      >
-        Clear date and video link
-      </button>
+      <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={saving || !startsAt} onClick={save}>{saving ? 'Saving…' : 'Save logistics'}</button>
       {message ? <p className="text-sm text-slate-600 md:col-span-4">{message}</p> : null}
     </div>
   )

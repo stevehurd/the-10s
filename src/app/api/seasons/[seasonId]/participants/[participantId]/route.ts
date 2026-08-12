@@ -1,9 +1,11 @@
+import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 
 import { authorizeApi } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
 import { draftErrorResponse } from '@/lib/draft/http'
 import {
+  reopenParticipantKeeperSelections,
   replaceSeasonParticipant,
   setParticipantReleaseOverride,
 } from '@/lib/seasons/participants'
@@ -38,7 +40,22 @@ export async function PATCH(
       })
       return NextResponse.json(participant)
     }
-    return NextResponse.json({ error: 'Provide replacementUserId or releaseOverride' }, { status: 400 })
+    if (body.reopenKeeperSelections === true) {
+      const participant = await reopenParticipantKeeperSelections({
+        seasonId,
+        participantId,
+        actorUserId: authorization.appUser.id,
+      })
+      revalidatePath('/')
+      revalidatePath('/admin/draft')
+      revalidatePath(`/admin/seasons/${seasonId}/setup`)
+      revalidatePath(`/seasons/${seasonId}/prep`)
+      return NextResponse.json(participant)
+    }
+    return NextResponse.json(
+      { error: 'Provide replacementUserId, releaseOverride, or reopenKeeperSelections' },
+      { status: 400 },
+    )
   } catch (error) {
     return draftErrorResponse(error)
   }

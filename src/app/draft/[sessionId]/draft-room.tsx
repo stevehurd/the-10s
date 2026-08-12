@@ -59,6 +59,7 @@ export interface DraftState {
     mode: string
     status: string
     pickSeconds: number
+    startsAt: string | null
     meetingUrl: string | null
     currentTurnIndex: number
     revision: number
@@ -66,6 +67,7 @@ export interface DraftState {
   }
   viewerParticipantId: string | null
   viewerIsCommissioner: boolean
+  keeperSelectionsRevealed?: boolean
   currentTurnId: string | null
   participants: Participant[]
   turns: Turn[]
@@ -116,6 +118,7 @@ export default function DraftRoom({
   const autopickRequestedForTurn = useRef<string | null>(null)
   const draftPrepStorageReadyRef = useRef<string | null>(null)
   const draftLoadInFlight = useRef<Promise<void> | null>(null)
+  const activationAttemptedAt = useRef(0)
 
   const loadDraft = useCallback(async (quiet = false, refreshAfterInFlight = false) => {
     if (demo) return
@@ -224,6 +227,30 @@ export default function DraftRoom({
     const timer = window.setInterval(() => setNow(Date.now()), 250)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (
+      demo ||
+      !state ||
+      state.session.mode !== 'OFFICIAL' ||
+      state.session.status !== 'SCHEDULED' ||
+      !state.session.startsAt ||
+      new Date(state.session.startsAt).getTime() > now ||
+      now - activationAttemptedAt.current < 10_000
+    ) return
+
+    activationAttemptedAt.current = now
+    void (async () => {
+      try {
+        const response = await fetch(`/api/draft-sessions/${sessionId}/activate`, { method: 'POST' })
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.error || 'Unable to open the draft')
+        await loadDraft(false, true)
+      } catch (activationError) {
+        setError(activationError instanceof Error ? activationError.message : 'Unable to open the draft')
+      }
+    })()
+  }, [demo, loadDraft, now, sessionId, state])
 
   const currentTurn = state?.turns.find((turn) => turn.id === state.currentTurnId) ?? null
   const viewerParticipant = state?.participants.find(
@@ -455,7 +482,7 @@ export default function DraftRoom({
   }
 
   async function commissionerControl(action: 'START' | 'PAUSE' | 'RESUME' | 'UNDO') {
-    if (action === 'START' && !window.confirm('Start the draft now? Keeper choices will lock and the first pick clock will begin.')) return
+    if (action === 'START' && !window.confirm('Start this rehearsal draft and begin the first pick clock?')) return
     if (action === 'UNDO' && !window.confirm('Undo the last pick? The team will become available and the draft will remain paused.')) return
     setControlPending(true)
     setError(null)
@@ -590,7 +617,7 @@ export default function DraftRoom({
         <div className="border-b border-white/10 bg-slate-900 px-4 py-2">
           <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2">
             <span className="mr-2 text-xs font-bold uppercase tracking-wider text-slate-500">Commissioner controls</span>
-            {state.session.status === 'SCHEDULED' ? (
+            {state.session.status === 'SCHEDULED' && state.session.mode === 'REHEARSAL' ? (
               <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-bold text-white disabled:opacity-50" disabled={controlPending} onClick={() => commissionerControl('START')}>Start Draft</button>
             ) : null}
             {state.session.status === 'LIVE' ? (
@@ -627,6 +654,15 @@ export default function DraftRoom({
         </div>
       ) : null}
 
+      {state.keeperSelectionsRevealed === false ? (
+        <section className="mx-auto mt-8 max-w-3xl px-4 text-center">
+          <div className="rounded-2xl border border-blue-300/20 bg-blue-300/10 p-8">
+            <h2 className="text-2xl font-black">Keeper selections are still private</h2>
+            <p className="mt-2 text-slate-300">The draft board and team availability will appear after every player locks their selections or the draft starts.</p>
+          </div>
+        </section>
+      ) : null}
+
       {draftComplete ? (
         <section className="border-b border-blue-500/20 bg-blue-500/10 px-4 py-10 text-center sm:py-14">
           <div className="mx-auto max-w-3xl">
@@ -657,7 +693,7 @@ export default function DraftRoom({
         </section>
       ) : null}
 
-      <nav aria-label="Draft views" className="relative z-20 border-b border-white/10 bg-slate-900/95 px-4 backdrop-blur md:sticky md:top-[89px]">
+      {state.keeperSelectionsRevealed !== false ? <nav aria-label="Draft views" className="relative z-20 border-b border-white/10 bg-slate-900/95 px-4 backdrop-blur md:sticky md:top-[89px]">
         <div className="mx-auto grid max-w-[1600px] grid-cols-3">
         {visibleTabs.map((tab) => (
           <button
@@ -671,9 +707,9 @@ export default function DraftRoom({
           </button>
         ))}
         </div>
-      </nav>
+      </nav> : null}
 
-      <div className={`mx-auto max-w-[1600px] p-4 lg:p-6 ${selectedTeam ? 'pb-48 sm:pb-32' : ''}`}>
+      {state.keeperSelectionsRevealed !== false ? <div className={`mx-auto max-w-[1600px] p-4 lg:p-6 ${selectedTeam ? 'pb-48 sm:pb-32' : ''}`}>
         {displayedTab === 'PICK' ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,.55fr)]">
           <section className="order-2 lg:order-1">
@@ -890,7 +926,7 @@ export default function DraftRoom({
           </div>
         </section>
         ) : null}
-      </div>
+      </div> : null}
 
       {selectedTeam ? (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-orange-400/40 bg-slate-900 px-4 pt-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] shadow-2xl sm:p-4">

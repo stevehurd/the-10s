@@ -97,7 +97,7 @@ export default function PreparationBoard({ seasonId, teams }: { seasonId: string
           <div className="grid grid-cols-3 gap-2 lg:flex">
             {(['ALL', 'NFL', 'COLLEGE'] as const).map((value) => <button className={`min-h-10 rounded-lg px-3 py-2 text-sm font-bold ${league === value ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-300'}`} key={value} onClick={() => setLeague(value)} type="button">{value === 'COLLEGE' ? 'College' : value === 'ALL' ? 'All' : 'NFL'}</button>)}
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-300"><input checked={showUnavailable} onChange={(event) => setShowUnavailable(event.target.checked)} type="checkbox" /> Show kept/pending teams</label>
+          <label className="flex items-center gap-2 text-sm text-slate-300"><input checked={showUnavailable} onChange={(event) => setShowUnavailable(event.target.checked)} type="checkbox" /> Show held/unavailable teams</label>
         </div>
         <p className="mt-3 text-xs text-slate-500">Your ★ shortlist is private and stored only in this browser. Shortlisted teams sort first.</p>
       </section>
