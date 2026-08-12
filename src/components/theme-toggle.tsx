@@ -15,7 +15,7 @@ export default function ThemeToggle() {
   return (
     <button
       aria-label="Toggle color theme"
-      className="fixed bottom-4 right-4 z-[100] grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-slate-900/90 text-base font-bold text-slate-200 backdrop-blur transition hover:bg-slate-800"
+      className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-slate-900/90 text-base font-bold text-slate-200 backdrop-blur transition hover:bg-slate-800"
       onClick={toggleTheme}
       title="Toggle color theme"
       type="button"

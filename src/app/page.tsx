@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import DraftCountdown from '@/components/draft-countdown'
 import KeeperStatusCallout from '@/components/keeper-status-callout'
+import MemberHeader from '@/components/member-header'
 import SeasonSelector from '@/components/season-selector'
 import TeamMark from '@/components/team-mark'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
@@ -30,11 +31,14 @@ export default async function Home({
   const membership = context.appUser.memberships[0]
   if (!membership) {
     return (
-      <main className="min-h-screen bg-slate-950 p-6 text-slate-100">
-        <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-white/5 p-6">
-          Your account does not have an active pool membership.
-        </div>
-      </main>
+      <div className="min-h-screen bg-slate-950 text-slate-100">
+        <MemberHeader active="dashboard" commissioner={false} userName={context.appUser.name} />
+        <main className="p-6">
+          <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-white/5 p-6">
+            Your account does not have an active pool membership.
+          </div>
+        </main>
+      </div>
     )
   }
 
@@ -48,12 +52,19 @@ export default async function Home({
 
   if (!selectedSeason) {
     return (
-      <main className="min-h-screen bg-slate-950 p-6 text-slate-100">
-        <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-white/5 p-6">
-          <h1 className="text-2xl font-semibold">{membership.pool.name}</h1>
-          <p className="mt-2 text-slate-400">A commissioner has not created a season yet.</p>
-        </div>
-      </main>
+      <div className="min-h-screen bg-slate-950 text-slate-100">
+        <MemberHeader
+          active="dashboard"
+          commissioner={membership.role === 'COMMISSIONER'}
+          userName={context.appUser.name}
+        />
+        <main className="p-6">
+          <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-white/5 p-6">
+            <h1 className="text-2xl font-semibold">{membership.pool.name}</h1>
+            <p className="mt-2 text-slate-400">A commissioner has not created a season yet.</p>
+          </div>
+        </main>
+      </div>
     )
   }
 
@@ -163,35 +174,18 @@ export default async function Home({
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-white/10 bg-slate-900/70 px-4 py-5">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-300">
-              {membership.pool.name}
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold">League dashboard</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            {membership.role === 'COMMISSIONER' ? (
-              <Link className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/5" href="/admin">
-                Commissioner
-              </Link>
-            ) : null}
-            <Link className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/5" href="/settings">
-              Settings
-            </Link>
-            <form action="/auth/signout" method="post">
-              <button className="rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-white" type="submit">Sign out</button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <MemberHeader
+        active="dashboard"
+        commissioner={membership.role === 'COMMISSIONER'}
+        seasonId={selectedSeason.id}
+        userName={context.appUser.name}
+      />
 
-      <div className="mx-auto max-w-7xl px-4 py-7">
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:py-7">
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm text-slate-400">Welcome back, {context.appUser.name}</p>
-            <h2 className="mt-1 text-3xl font-semibold">{selectedSeason.name}</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-300">{membership.pool.name}</p>
+            <h2 className="mt-1 text-2xl font-semibold sm:text-3xl">{selectedSeason.name}</h2>
             <p className="mt-2 text-xs font-bold uppercase tracking-[0.2em] text-orange-300">
               {isPreseason ? 'Preseason' : isComplete ? 'Season complete' : 'In season'}
             </p>
@@ -240,14 +234,14 @@ export default async function Home({
         ) : null}
 
         {isPreseason ? (
-          <section className="mb-6 overflow-hidden rounded-3xl border border-blue-500/30 bg-blue-500/10 p-6 sm:p-8">
+          <section className="mb-6 overflow-hidden rounded-3xl border border-blue-500/30 bg-blue-500/10 p-5 sm:p-8">
             <div className="grid gap-6 lg:grid-cols-[1.2fr_.8fr] lg:items-center">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-300">Draft headquarters</p>
-                <h3 className="mt-3 text-3xl font-black">Get ready for the {selectedSeason.year} draft</h3>
+                <h3 className="mt-3 text-2xl font-black sm:text-3xl">Get ready for the {selectedSeason.year} draft</h3>
                 <p className="mt-3 max-w-2xl text-slate-300">Finalize keepers, review the snake order, and build a shortlist from the best available NFL and college teams.</p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <Link className="rounded-xl bg-blue-600 px-5 py-3 font-black text-white" href={`/seasons/${selectedSeason.id}/prep`}>Open draft preparation</Link>
+                  <Link className="w-full rounded-xl bg-blue-600 px-5 py-3 text-center font-black text-white sm:w-auto" href={`/seasons/${selectedSeason.id}/prep`}>Open draft preparation</Link>
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
@@ -267,10 +261,10 @@ export default async function Home({
         ) : null}
 
         {champion ? (
-          <section className="mb-7 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-7 text-center">
+          <section className="mb-7 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-5 text-center sm:p-7">
             <p className="text-5xl">🏆</p>
             <p className="mt-3 text-xs font-bold uppercase tracking-[0.24em] text-blue-300">{selectedSeason.year} champion</p>
-            <h3 className="mt-2 text-4xl font-black">{playerDisplayName(champion.user.name, champion.poolSeat.label)}</h3>
+            <h3 className="mt-2 break-words text-3xl font-black sm:text-4xl">{playerDisplayName(champion.user.name, champion.poolSeat.label)}</h3>
             {championNickname ? <p className="mt-1 text-sm font-semibold text-slate-400">{champion.user.name}</p> : null}
             <p className="mt-2 text-lg text-slate-300">{champion.totalWins} wins</p>
           </section>
@@ -313,7 +307,7 @@ export default async function Home({
             <div className="divide-y divide-white/5">
               {keeperTracker.map((participant) => (
                 <article className={participant.isViewer ? 'bg-blue-500/5' : ''} key={participant.id}>
-                  <div className="flex items-center justify-between gap-4 px-5 py-4">
+                  <div className="flex items-start justify-between gap-3 px-4 py-4 sm:items-center sm:px-5">
                     <div className="min-w-0">
                       <p className="truncate font-semibold">
                         {participant.name}{participant.isViewer ? ' · You' : ''}
@@ -330,15 +324,15 @@ export default async function Home({
                     </span>
                   </div>
                   {participant.submitted ? (
-                    <div className="border-t border-white/5 px-5 pb-4 pt-3">
+                    <div className="border-t border-white/5 px-4 pb-4 pt-3 sm:px-5">
                       {participant.keptTeams.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {participant.keptTeams.map((team) => (
-                            <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-slate-950/50 px-2 py-1.5 text-sm" key={team.id}>
-                              <span className="mr-2 text-xs font-bold text-slate-500">{team.slot}</span>
+                            <span className="inline-flex max-w-full items-center gap-2 rounded-lg border border-white/10 bg-slate-950/50 px-2 py-1.5 text-sm" key={team.id}>
+                              <span className="text-xs font-bold text-slate-500">{team.slot}</span>
                               <TeamMark abbreviation={team.abbreviation} logoUrl={team.logoUrl} size="sm" />
-                              {team.name}
-                              <span className="ml-2 text-xs text-slate-500">{team.league === 'NFL' ? 'NFL' : 'College'}</span>
+                              <span className="min-w-0 truncate">{team.name}</span>
+                              <span className="shrink-0 text-xs text-slate-500">{team.league === 'NFL' ? 'NFL' : 'College'}</span>
                             </span>
                           ))}
                         </div>
@@ -364,14 +358,14 @@ export default async function Home({
               const nickname = editableRosterNickname(participant.poolSeat.label)
               return (
                 <article className={`px-4 py-5 sm:px-5 ${isViewer ? 'bg-blue-500/10' : ''}`} key={participant.id}>
-                  <div className="grid grid-cols-[44px_1fr_auto] items-center gap-3">
-                    <span className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-black ${index === 0 ? 'bg-blue-600' : 'bg-white/5 text-slate-300'}`}>{index + 1}</span>
+                  <div className="grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:gap-3">
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-full text-base font-black sm:h-10 sm:w-10 sm:text-lg ${index === 0 ? 'bg-blue-600' : 'bg-white/5 text-slate-300'}`}>{index + 1}</span>
                     <div className="min-w-0">
-                      <p className="truncate text-lg font-bold">{playerDisplayName(participant.user.name, participant.poolSeat.label)}{isViewer ? ' · You' : ''}</p>
+                      <p className="truncate text-base font-bold sm:text-lg">{playerDisplayName(participant.user.name, participant.poolSeat.label)}{isViewer ? ' · You' : ''}</p>
                       {nickname ? <p className="truncate text-sm text-slate-500">{participant.user.name}</p> : null}
                     </div>
                     <div className="text-right">
-                      <p className="text-4xl font-black leading-none tabular-nums text-blue-300">{participant.totalWins}</p>
+                      <p className="text-3xl font-black leading-none tabular-nums text-blue-300 sm:text-4xl">{participant.totalWins}</p>
                       <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Total wins</p>
                     </div>
                   </div>
