@@ -42,9 +42,9 @@
 - Every completed roster has exactly 2 NFL and 8 college teams.
 - Rehearsal activity can never mutate an official draft or roster.
 
-## Draft Test Lab
+## Demo drafts
 
-The commissioner-only test lab is restricted to the synthetic development pool and harness-named rehearsal sessions. It runs database-backed checks for competing player/commissioner picks, pause and resume, expired-clock autopick, reconnect state reconstruction, undo, full 15-seat completion, final 2-NFL/8-college quotas, and official-roster fingerprint isolation.
+Commissioners can create isolated demo drafts from the current participants and base order. Each demo receives its own randomized, rule-valid keeper snapshot and can exercise manual picks, pause/resume, autopick, undo, and complete-draft behavior without changing official rosters or keeper choices.
 
 ## Standings tiebreaker
 

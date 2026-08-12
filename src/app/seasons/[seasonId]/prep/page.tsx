@@ -9,6 +9,7 @@ import {
   getPreparationTeamState,
   type PreparationEligibilityStatus,
 } from '@/lib/seasons/preparation'
+import { areKeeperSelectionsRevealed } from '@/lib/seasons/keeper-visibility'
 
 import PreparationBoard from './preparation-board'
 
@@ -26,7 +27,7 @@ export default async function DraftPreparationPage({ params }: { params: Promise
   const membership = context.appUser.memberships.find((entry) => entry.poolId === season.pool!.id)
   if (!membership) redirect('/')
 
-  const [eligibility, priorRecords, heldSlots, viewerParticipant] = await Promise.all([
+  const [eligibility, priorRecords, inheritedSlots, participants] = await Promise.all([
     prisma.seasonTeamEligibility.findMany({
       where: { seasonId },
       include: { team: true },
@@ -37,28 +38,37 @@ export default async function DraftPreparationPage({ params }: { params: Promise
     prisma.rosterSlot.findMany({
       where: {
         seasonId,
-        teamId: { not: null },
-        retentionChoice: { in: ['KEEP', 'PENDING'] },
+        inheritedTeamId: { not: null },
       },
       select: {
+        inheritedTeamId: true,
         teamId: true,
         retentionChoice: true,
-        seasonParticipant: { select: { user: { select: { name: true } } } },
+        seasonParticipant: {
+          select: { userId: true, user: { select: { name: true } } },
+        },
       },
     }),
-    prisma.seasonParticipant.findUnique({
-      where: { seasonId_userId: { seasonId, userId: context.appUser.id } },
-      select: { decisionsSubmittedAt: true, decisionsLockedAt: true },
+    prisma.seasonParticipant.findMany({
+      where: { seasonId },
+      select: { id: true, userId: true, decisionsSubmittedAt: true, decisionsLockedAt: true },
     }),
   ])
+  const viewerParticipant = participants.find((participant) => participant.userId === context.appUser.id)
+  const selectionsRevealed = areKeeperSelectionsRevealed(participants)
   const recordByTeam = new Map(priorRecords.map((record) => [record.teamId, record]))
   const holderByTeam = new Map(
-    heldSlots.flatMap((slot) => slot.teamId
-      ? [[slot.teamId, {
-          name: slot.seasonParticipant.user.name,
-          retentionChoice: slot.retentionChoice as 'KEEP' | 'PENDING',
-        }] as const]
-      : []),
+    inheritedSlots.flatMap((slot) => {
+      if (!slot.inheritedTeamId) return []
+      const canSeeChoice = selectionsRevealed || slot.seasonParticipant.userId === context.appUser.id
+      if (canSeeChoice && slot.retentionChoice === 'RELEASE') return []
+      return [[slot.inheritedTeamId, {
+        name: slot.seasonParticipant.user.name,
+        retentionChoice: canSeeChoice
+          ? slot.retentionChoice as 'KEEP' | 'PENDING'
+          : 'HIDDEN' as const,
+      }] as const]
+    }),
   )
   const teams = eligibility.map((entry) => {
     const { status, team } = entry
@@ -97,7 +107,7 @@ export default async function DraftPreparationPage({ params }: { params: Promise
           <Link className="text-sm font-semibold text-blue-300 hover:text-blue-200" href={`/?season=${season.id}`}>← Preseason hub</Link>
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-orange-300">{season.pool.name} · {season.name}</p>
           <h1 className="mt-2 text-2xl font-black sm:text-3xl">Draft preparation</h1>
-          <p className="mt-2 max-w-3xl text-slate-400">Compare the approved team pool using last season&apos;s record. Keeper decisions update availability automatically.</p>
+          <p className="mt-2 max-w-3xl text-slate-400">Compare the approved team pool using last season&apos;s record. Other players&apos; keeper choices remain private until everyone locks.</p>
           {viewerParticipant ? (
             <div className="mt-6">
               <KeeperStatusCallout

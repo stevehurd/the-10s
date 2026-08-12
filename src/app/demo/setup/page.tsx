@@ -15,6 +15,7 @@ export default function DemoSeasonSetupPage() {
     isReplacement: index === 2,
     releaseOverride: index === 4,
     decisionsSubmitted: index !== 5,
+    decisionsLocked: index !== 5,
     inheritedCount: index === 5 ? 0 : 10,
     releasedNFL: index === 5 ? 0 : 1,
     releasedCollege: index === 5 ? 0 : 2,

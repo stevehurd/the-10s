@@ -1,3 +1,4 @@
+import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 
 import { authorizeApi } from '@/lib/auth/authorization'
@@ -36,6 +37,9 @@ export async function POST(request: Request) {
       meetingUrl,
       actorUserId: authorization.appUser.id,
     })
+
+    revalidatePath('/')
+    revalidatePath('/admin/draft')
 
     return NextResponse.json(session, { status: 201 })
   } catch (error) {

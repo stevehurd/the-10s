@@ -1,11 +1,17 @@
 import { Prisma } from '@prisma/client'
 
 import { prisma } from '@/lib/db'
+import { areKeeperSelectionsRevealed } from '@/lib/seasons/keeper-visibility'
 import {
   isPrismaWriteConflict,
   retryPrismaWriteConflict,
 } from '@/lib/db/write-conflict-retry'
 import { serverDraftDeadline } from './clock'
+import { isOfficialDraftDue } from './lifecycle'
+import {
+  parseRehearsalKeepers,
+  randomlySeedRehearsalKeepers,
+} from './rehearsal-keepers'
 import {
   canActorMakeDraftSelection,
   canSelectLeague,
@@ -95,12 +101,67 @@ function toEngineSlot(slot: {
   }
 }
 
+type DraftParticipantForTurns = {
+  id: string
+  baseDraftOrder: number | null
+  decisionsLockedAt: Date | null
+  user: { name: string }
+  rosterSlots: Array<{
+    id: string
+    number: number
+    inheritedTeamId: string | null
+    retentionChoice: string
+    team: { id: string; name: string; league: string } | null
+  }>
+}
+
+function buildDraftSeats(participants: readonly DraftParticipantForTurns[]): DraftSeat[] {
+  return participants.map((participant) => {
+    if (participant.baseDraftOrder === null) {
+      throw new DraftRuleError(
+        `${participant.user.name} does not have a draft order`,
+        'MISSING_DRAFT_ORDER',
+      )
+    }
+    if (participant.rosterSlots.length !== 10) {
+      throw new DraftRuleError(
+        `${participant.user.name} must have exactly 10 roster slots`,
+        'INVALID_ROSTER_SLOTS',
+      )
+    }
+    const undecided = participant.rosterSlots.find(
+      (slot) => slot.inheritedTeamId && slot.retentionChoice === 'PENDING',
+    )
+    if (undecided) {
+      throw new DraftRuleError(
+        `${participant.user.name} has not decided slot ${undecided.number}`,
+        'PENDING_KEEPER_DECISION',
+      )
+    }
+    if (!participant.decisionsLockedAt) {
+      throw new DraftRuleError(
+        `${participant.user.name} has not locked Keep and Release choices`,
+        'RETENTION_NOT_LOCKED',
+      )
+    }
+    return {
+      id: participant.id,
+      name: participant.user.name,
+      baseOrder: participant.baseDraftOrder,
+      slots: participant.rosterSlots.map(toEngineSlot),
+    }
+  })
+}
+
 export async function createDraftSession(input: CreateDraftSessionInput) {
   if (!Number.isInteger(input.pickSeconds) || input.pickSeconds < 10 || input.pickSeconds > 900) {
     throw new DraftRuleError('Pick clock must be between 10 and 900 seconds', 'INVALID_CLOCK')
   }
   const meetingUrl = normalizeMeetingUrl(input.meetingUrl)
   validateDraftLogistics(input.startsAt ?? null, meetingUrl)
+  if (input.mode === 'OFFICIAL' && !input.startsAt) {
+    throw new DraftRuleError('Set the official draft date and time', 'START_TIME_REQUIRED')
+  }
 
   const season = await prisma.season.findUnique({ where: { id: input.seasonId } })
   if (!season) throw new DraftRuleError('Season not found', 'NOT_FOUND', 404)
@@ -111,7 +172,7 @@ export async function createDraftSession(input: CreateDraftSessionInput) {
     where: { seasonId: input.seasonId },
     include: {
       user: { select: { name: true } },
-      rosterSlots: { include: { team: true }, orderBy: { number: 'asc' } },
+      rosterSlots: { include: { team: true, inheritedTeam: true }, orderBy: { number: 'asc' } },
     },
   })
 
@@ -132,21 +193,7 @@ export async function createDraftSession(input: CreateDraftSessionInput) {
     }
   }
 
-  const unresolvedEligibility = await prisma.seasonTeamEligibility.count({
-    where: {
-      seasonId: input.seasonId,
-      leagueSnapshot: 'COLLEGE',
-      status: { in: ['PENDING', 'REVIEW'] },
-    },
-  })
-  if (unresolvedEligibility > 0) {
-    throw new DraftRuleError(
-      `${unresolvedEligibility} college team pool exceptions still need review`,
-      'ELIGIBILITY_REVIEW_INCOMPLETE',
-    )
-  }
-
-  const seats: DraftSeat[] = participants.map((participant) => {
+  for (const participant of participants) {
     if (participant.baseDraftOrder === null) {
       throw new DraftRuleError(
         `${participant.user.name} does not have a draft order`,
@@ -161,34 +208,33 @@ export async function createDraftSession(input: CreateDraftSessionInput) {
       )
     }
 
-    const undecided = participant.rosterSlots.find(
-      (slot) => slot.inheritedTeamId && slot.retentionChoice === 'PENDING',
-    )
-    if (undecided) {
-      throw new DraftRuleError(
-        `${participant.user.name} has not decided slot ${undecided.number}`,
-        'PENDING_KEEPER_DECISION',
-      )
-    }
+  }
 
-
-    const hasInheritedRoster = participant.rosterSlots.some((slot) => slot.inheritedTeamId)
-    if (hasInheritedRoster && !participant.decisionsSubmittedAt) {
-      throw new DraftRuleError(
-        `${participant.user.name} has not submitted Keep and Release choices`,
-        'RETENTION_NOT_SUBMITTED',
-      )
-    }
-
-    return {
-      id: participant.id,
-      name: participant.user.name,
-      baseOrder: participant.baseDraftOrder,
-      slots: participant.rosterSlots.map(toEngineSlot),
-    }
-  })
-
-  const generatedTurns = generateDraftTurns(seats)
+  const rehearsalKeepers = input.mode === 'REHEARSAL'
+    ? randomlySeedRehearsalKeepers(participants.flatMap((participant) =>
+        participant.rosterSlots.flatMap((slot) => slot.inheritedTeam
+          ? [{
+              participantId: participant.id,
+              rosterSlotId: slot.id,
+              teamId: slot.inheritedTeam.id,
+              league: toLeague(slot.inheritedTeam.league),
+            }]
+          : []),
+      ))
+    : []
+  const rehearsalKeeperSlotIds = new Set(rehearsalKeepers.map((keeper) => keeper.rosterSlotId))
+  const rehearsalParticipants = participants.map((participant) => ({
+    ...participant,
+    decisionsLockedAt: participant.decisionsLockedAt ?? new Date(),
+    rosterSlots: participant.rosterSlots.map((slot) => ({
+      ...slot,
+      team: rehearsalKeeperSlotIds.has(slot.id) ? slot.inheritedTeam : null,
+      retentionChoice: rehearsalKeeperSlotIds.has(slot.id) ? 'KEEP' : 'RELEASE',
+    })),
+  }))
+  const generatedTurns = input.mode === 'REHEARSAL'
+    ? generateDraftTurns(buildDraftSeats(rehearsalParticipants))
+    : []
 
   return prisma.$transaction(async (tx) => {
     const session = await tx.draftSession.create({
@@ -222,6 +268,21 @@ export async function createDraftSession(input: CreateDraftSessionInput) {
             overallIndex: turn.index,
           }
         }),
+      })
+    }
+
+    if (input.mode === 'REHEARSAL') {
+      await tx.auditEvent.create({
+        data: {
+          poolId,
+          seasonId: input.seasonId,
+          draftSessionId: session.id,
+          actorUserId: input.actorUserId,
+          action: 'DEMO_KEEPERS_RANDOMIZED',
+          entityType: 'DraftSession',
+          entityId: session.id,
+          data: { keepers: rehearsalKeepers },
+        },
       })
     }
 
@@ -269,6 +330,9 @@ export async function updateDraftLogistics(input: {
   if (session.status !== 'SCHEDULED') {
     throw new DraftRuleError('Draft logistics lock when the draft starts', 'INVALID_STATUS', 409)
   }
+  if (session.mode === 'OFFICIAL' && !input.startsAt) {
+    throw new DraftRuleError('The official draft must have a start time', 'START_TIME_REQUIRED')
+  }
   if (!session.season.poolId) {
     throw new DraftRuleError('Season is not assigned to a pool', 'MISSING_POOL')
   }
@@ -303,7 +367,7 @@ export async function updateDraftLogistics(input: {
 }
 
 export async function startDraftSession(sessionId: string, actorUserId: string) {
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await retryPrismaWriteConflict(() => prisma.$transaction(async (tx) => {
     const session = await tx.draftSession.findUnique({
       where: { id: sessionId },
       include: { season: true, turns: { orderBy: { overallIndex: 'asc' }, take: 1 } },
@@ -314,13 +378,70 @@ export async function startDraftSession(sessionId: string, actorUserId: string) 
     }
 
     const now = new Date()
-    const firstTurn = session.turns[0]
-    const status = firstTurn ? 'LIVE' : 'COMPLETED'
+    if (session.mode === 'OFFICIAL') {
+      if (!session.startsAt) {
+        throw new DraftRuleError('The official draft has no start time', 'START_TIME_REQUIRED', 409)
+      }
+      if (!isOfficialDraftDue(session, now)) {
+        throw new DraftRuleError('The draft room is not open yet', 'DRAFT_NOT_DUE', 403)
+      }
+    }
 
-    await tx.seasonParticipant.updateMany({
-      where: { seasonId: session.seasonId, decisionsLockedAt: null },
-      data: { decisionsLockedAt: now },
-    })
+    let firstTurn = session.turns[0] ?? null
+    if (session.mode === 'OFFICIAL' && !firstTurn) {
+      const participants = await tx.seasonParticipant.findMany({
+        where: { seasonId: session.seasonId },
+        include: {
+          user: { select: { name: true } },
+          rosterSlots: { include: { team: true }, orderBy: { number: 'asc' } },
+        },
+      })
+      if (participants.length === 0) {
+        throw new DraftRuleError('Add season participants before starting the draft', 'NO_PARTICIPANTS')
+      }
+      const seats = buildDraftSeats(participants)
+      const unresolvedEligibility = await tx.seasonTeamEligibility.count({
+        where: {
+          seasonId: session.seasonId,
+          leagueSnapshot: 'COLLEGE',
+          status: { in: ['PENDING', 'REVIEW'] },
+        },
+      })
+      if (unresolvedEligibility > 0) {
+        throw new DraftRuleError(
+          `${unresolvedEligibility} college team pool exceptions still need review`,
+          'ELIGIBILITY_REVIEW_INCOMPLETE',
+        )
+      }
+      const generatedTurns = generateDraftTurns(seats)
+      if (generatedTurns.length > 0) {
+        await tx.draftTurn.createMany({
+          data: generatedTurns.map((turn) => {
+            const participant = participants.find((candidate) => candidate.id === turn.seatId)
+            const rosterSlot = participant?.rosterSlots.find(
+              (candidate) => candidate.number === turn.slotNumber,
+            )
+            if (!participant || !rosterSlot) {
+              throw new DraftRuleError('Generated turn references a missing slot', 'INVALID_TURN')
+            }
+            return {
+              draftSessionId: session.id,
+              seasonParticipantId: participant.id,
+              rosterSlotId: rosterSlot.id,
+              round: turn.round,
+              orderInRound: turn.orderInRound,
+              overallIndex: turn.index,
+            }
+          }),
+        })
+        const createdFirstTurn = await tx.draftTurn.findFirst({
+          where: { draftSessionId: session.id },
+          orderBy: { overallIndex: 'asc' },
+        })
+        if (createdFirstTurn) firstTurn = createdFirstTurn
+      }
+    }
+    const status = firstTurn ? 'LIVE' : 'COMPLETED'
 
     const updated = await tx.draftSession.update({
       where: { id: session.id },
@@ -358,7 +479,7 @@ export async function startDraftSession(sessionId: string, actorUserId: string) 
     }
 
     return { updated, firstTurnId: firstTurn?.id ?? null, pickSeconds: session.pickSeconds }
-  })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }))
 
   // Arm the clock after the main transaction commits. Remote transaction latency
   // must never consume time that belongs to the player on the clock.
@@ -610,9 +731,18 @@ export async function makeDraftSelection(input: MakeSelectionInput) {
         throw new DraftRuleError('Team is not eligible for this season', 'TEAM_NOT_ELIGIBLE')
       }
 
-      const heldTeam = await tx.rosterSlot.findFirst({
-        where: { seasonId: session.seasonId, teamId: team.id },
-      })
+      const rehearsalKeeperEvent = session.mode === 'REHEARSAL'
+        ? await tx.auditEvent.findFirst({
+            where: { draftSessionId: session.id, action: 'DEMO_KEEPERS_RANDOMIZED' },
+            orderBy: { createdAt: 'asc' },
+          })
+        : null
+      const rehearsalKeepers = parseRehearsalKeepers(rehearsalKeeperEvent?.data)
+      const heldTeam = session.mode === 'REHEARSAL'
+        ? rehearsalKeepers.some((keeper) => keeper.teamId === team.id)
+        : Boolean(await tx.rosterSlot.findFirst({
+            where: { seasonId: session.seasonId, teamId: team.id },
+          }))
       const selectedTeam = await tx.draftSelection.findFirst({
         where: { draftSessionId: session.id, teamId: team.id },
       })
@@ -623,7 +753,7 @@ export async function makeDraftSelection(input: MakeSelectionInput) {
       const [participantSlots, participantSelections] = await Promise.all([
         tx.rosterSlot.findMany({
           where: { seasonParticipantId: turn.seasonParticipantId },
-          include: { team: true },
+          include: { team: true, inheritedTeam: true },
           orderBy: { number: 'asc' },
         }),
         tx.draftSelection.findMany({
@@ -637,10 +767,20 @@ export async function makeDraftSelection(input: MakeSelectionInput) {
       const selectedTeamBySlot = new Map(
         participantSelections.map((selection) => [selection.rosterSlotId, selection.team]),
       )
+      const rehearsalKeeperSlotIds = new Set(
+        rehearsalKeepers
+          .filter((keeper) => keeper.participantId === turn.seasonParticipantId)
+          .map((keeper) => keeper.rosterSlotId),
+      )
       const engineSlots = participantSlots.map((slot) =>
         toEngineSlot({
           ...slot,
-          team: slot.team ?? selectedTeamBySlot.get(slot.id) ?? null,
+          team: session.mode === 'REHEARSAL'
+            ? selectedTeamBySlot.get(slot.id) ?? (rehearsalKeeperSlotIds.has(slot.id) ? slot.inheritedTeam : null)
+            : slot.team ?? selectedTeamBySlot.get(slot.id) ?? null,
+          retentionChoice: session.mode === 'REHEARSAL' && rehearsalKeeperSlotIds.has(slot.id)
+            ? 'KEEP'
+            : slot.retentionChoice,
         }),
       )
       if (!canSelectLeague(engineSlots, toLeague(team.league))) {
@@ -812,7 +952,7 @@ async function autopickCurrentTurn(draftSessionId: string, requireExpiredClock: 
         include: {
           seasonParticipant: {
             include: {
-              rosterSlots: { include: { team: true }, orderBy: { number: 'asc' } },
+              rosterSlots: { include: { team: true, inheritedTeam: true }, orderBy: { number: 'asc' } },
             },
           },
         },
@@ -830,7 +970,7 @@ async function autopickCurrentTurn(draftSessionId: string, requireExpiredClock: 
     throw new DraftRuleError('The current pick clock has not expired', 'CLOCK_NOT_EXPIRED', 409)
   }
 
-  const [eligibility, heldSlots, selections, priorRecords, participantSelections] = await Promise.all([
+  const [eligibility, heldSlots, selections, priorRecords, participantSelections, rehearsalKeeperEvent] = await Promise.all([
     prisma.seasonTeamEligibility.findMany({
       where: { seasonId: session.seasonId, status: 'APPROVED' },
       include: { team: true },
@@ -853,10 +993,19 @@ async function autopickCurrentTurn(draftSessionId: string, requireExpiredClock: 
       },
       include: { team: true },
     }),
+    session.mode === 'REHEARSAL'
+      ? prisma.auditEvent.findFirst({
+          where: { draftSessionId: session.id, action: 'DEMO_KEEPERS_RANDOMIZED' },
+          orderBy: { createdAt: 'asc' },
+        })
+      : Promise.resolve(null),
   ])
 
+  const rehearsalKeepers = parseRehearsalKeepers(rehearsalKeeperEvent?.data)
   const unavailable = new Set([
-    ...heldSlots.flatMap((slot) => (slot.teamId ? [slot.teamId] : [])),
+    ...(session.mode === 'REHEARSAL'
+      ? rehearsalKeepers.map((keeper) => keeper.teamId)
+      : heldSlots.flatMap((slot) => (slot.teamId ? [slot.teamId] : []))),
     ...selections.map((selection) => selection.teamId),
   ])
   const recordByTeam = new Map(priorRecords.map((record) => [record.teamId, record]))
@@ -877,11 +1026,21 @@ async function autopickCurrentTurn(draftSessionId: string, requireExpiredClock: 
   const selectedTeamBySlot = new Map(
     participantSelections.map((selection) => [selection.rosterSlotId, selection.team]),
   )
+  const rehearsalKeeperSlotIds = new Set(
+    rehearsalKeepers
+      .filter((keeper) => keeper.participantId === turn.seasonParticipantId)
+      .map((keeper) => keeper.rosterSlotId),
+  )
   const team = selectAutopick(
     turn.seasonParticipant.rosterSlots.map((slot) =>
       toEngineSlot({
         ...slot,
-        team: slot.team ?? selectedTeamBySlot.get(slot.id) ?? null,
+        team: session.mode === 'REHEARSAL'
+          ? selectedTeamBySlot.get(slot.id) ?? (rehearsalKeeperSlotIds.has(slot.id) ? slot.inheritedTeam : null)
+          : slot.team ?? selectedTeamBySlot.get(slot.id) ?? null,
+        retentionChoice: session.mode === 'REHEARSAL' && rehearsalKeeperSlotIds.has(slot.id)
+          ? 'KEEP'
+          : slot.retentionChoice,
       }),
     ),
     availableTeams,
@@ -1026,7 +1185,7 @@ export async function getDraftRoomState(draftSessionId: string, viewerUserId: st
   })
   if (!session) throw new DraftRuleError('Draft session not found', 'NOT_FOUND', 404)
 
-  const [participants, eligibility, priorRecords, sessionSelections] = await Promise.all([
+  const [participants, eligibility, priorRecords, sessionSelections, rehearsalKeeperEvent] = await Promise.all([
     prisma.seasonParticipant.findMany({
       where: { seasonId: session.seasonId },
       orderBy: { baseDraftOrder: 'asc' },
@@ -1046,11 +1205,35 @@ export async function getDraftRoomState(draftSessionId: string, viewerUserId: st
       ? prisma.teamSeasonRecord.findMany({ where: { seasonId: session.season.previousSeasonId } })
       : Promise.resolve([]),
     prisma.draftSelection.findMany({ where: { draftSessionId }, select: { teamId: true } }),
+    session.mode === 'REHEARSAL'
+      ? prisma.auditEvent.findFirst({
+          where: { draftSessionId, action: 'DEMO_KEEPERS_RANDOMIZED' },
+          orderBy: { createdAt: 'asc' },
+        })
+      : Promise.resolve(null),
   ])
 
+  const rehearsalKeepers = parseRehearsalKeepers(rehearsalKeeperEvent?.data)
+  const rehearsalKeeperBySlot = new Map(
+    rehearsalKeepers.map((keeper) => [keeper.rosterSlotId, keeper]),
+  )
+  const effectiveParticipants = session.mode === 'REHEARSAL'
+    ? participants.map((participant) => ({
+        ...participant,
+        rosterSlots: participant.rosterSlots.map((slot) => ({
+          ...slot,
+          team: rehearsalKeeperBySlot.has(slot.id) ? slot.inheritedTeam : null,
+          teamId: rehearsalKeeperBySlot.has(slot.id) ? slot.inheritedTeamId : null,
+          retentionChoice: rehearsalKeeperBySlot.has(slot.id) ? 'KEEP' : slot.inheritedTeamId ? 'RELEASE' : 'OPEN',
+          source: rehearsalKeeperBySlot.has(slot.id) ? 'KEEPER' : 'DRAFT',
+        })),
+      }))
+    : participants
   const priorRecordByTeam = new Map(priorRecords.map((record) => [record.teamId, record]))
+  const keeperSelectionsRevealed =
+    session.mode === 'REHEARSAL' || session.status !== 'SCHEDULED' || areKeeperSelectionsRevealed(participants)
   const unavailableTeamIds = new Set([
-    ...participants.flatMap((participant) =>
+    ...effectiveParticipants.flatMap((participant) =>
       participant.rosterSlots.flatMap((slot) => (slot.teamId ? [slot.teamId] : [])),
     ),
     ...sessionSelections.map((selection) => selection.teamId),
@@ -1108,7 +1291,7 @@ export async function getDraftRoomState(draftSessionId: string, viewerUserId: st
         }
       }
 
-      const holder = participants.find((participant) =>
+      const holder = effectiveParticipants.find((participant) =>
         participant.rosterSlots.some((slot) => slot.teamId === team.id),
       )
       return {
@@ -1119,6 +1302,19 @@ export async function getDraftRoomState(draftSessionId: string, viewerUserId: st
     .sort(sortTeamsByPriorRecord)
 
   const currentTurn = session.turns.find((turn) => turn.overallIndex === session.currentTurnIndex) ?? null
+  const visibleParticipants = keeperSelectionsRevealed
+    ? effectiveParticipants
+    : effectiveParticipants.map((participant) => ({
+        ...participant,
+        rosterSlots: participant.userId === viewerUserId
+          ? participant.rosterSlots
+          : participant.rosterSlots.map((slot) => ({
+              ...slot,
+              retentionChoice: 'HIDDEN',
+              team: null,
+              inheritedTeam: null,
+            })),
+      }))
 
   return {
     session: {
@@ -1127,6 +1323,7 @@ export async function getDraftRoomState(draftSessionId: string, viewerUserId: st
       mode: session.mode,
       status: session.status,
       pickSeconds: session.pickSeconds,
+      startsAt: session.startsAt,
       meetingUrl: session.meetingUrl,
       currentTurnIndex: session.currentTurnIndex,
       revision: session.revision,
@@ -1134,10 +1331,11 @@ export async function getDraftRoomState(draftSessionId: string, viewerUserId: st
     },
     viewerParticipantId:
       participants.find((participant) => participant.userId === viewerUserId)?.id ?? null,
-    currentTurnId: currentTurn?.id ?? null,
-    participants,
-    turns: session.turns,
-    availableTeams,
-    unavailableTeams,
+    keeperSelectionsRevealed,
+    currentTurnId: keeperSelectionsRevealed ? currentTurn?.id ?? null : null,
+    participants: visibleParticipants,
+    turns: keeperSelectionsRevealed ? session.turns : [],
+    availableTeams: keeperSelectionsRevealed ? availableTeams : [],
+    unavailableTeams: keeperSelectionsRevealed ? unavailableTeams : [],
   }
 }

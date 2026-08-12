@@ -14,6 +14,7 @@ interface Participant {
   isReplacement: boolean
   releaseOverride: boolean
   decisionsSubmitted: boolean
+  decisionsLocked: boolean
   inheritedCount: number
   releasedNFL: number
   releasedCollege: number
@@ -24,7 +25,7 @@ async function errorMessage(response: Response) {
   return body?.error ?? `Request failed (${response.status})`
 }
 
-export default function SeasonSetup({ seasonId, participants: initialParticipants, availableMembers, unresolvedEligibility, draftConfigured, demo = false }: { seasonId: string; participants: Participant[]; availableMembers: Member[]; unresolvedEligibility: number; draftConfigured: boolean; demo?: boolean }) {
+export default function SeasonSetup({ seasonId, participants: initialParticipants, availableMembers, unresolvedEligibility, draftConfigured, keeperReopenAllowed = !draftConfigured, demo = false }: { seasonId: string; participants: Participant[]; availableMembers: Member[]; unresolvedEligibility: number; draftConfigured: boolean; keeperReopenAllowed?: boolean; demo?: boolean }) {
   const router = useRouter()
   const [order, setOrder] = useState(initialParticipants)
   const [replacementFor, setReplacementFor] = useState<string | null>(null)
@@ -76,19 +77,19 @@ export default function SeasonSetup({ seasonId, participants: initialParticipant
     await request(`/api/seasons/${seasonId}/participants`, 'POST', { userId: newUserId, baseDraftOrder: newPosition }, 'add')
   }
 
-  const submitted = initialParticipants.filter((participant) => participant.decisionsSubmitted).length
-  const ready = initialParticipants.length > 0 && submitted === initialParticipants.length && unresolvedEligibility === 0
+  const locked = initialParticipants.filter((participant) => participant.decisionsLocked).length
+  const ready = initialParticipants.length > 0 && locked === initialParticipants.length && unresolvedEligibility === 0
 
   return (
     <>
       <section className="grid gap-3 sm:grid-cols-4">
         <Metric label="Participants" value={initialParticipants.length} ok={initialParticipants.length > 0} />
-        <Metric label="Choices submitted" value={`${submitted}/${initialParticipants.length}`} ok={submitted === initialParticipants.length} />
+        <Metric label="Keepers locked" value={`${locked}/${initialParticipants.length}`} ok={locked === initialParticipants.length} />
         <Metric label="Eligibility reviews" value={unresolvedEligibility} ok={unresolvedEligibility === 0} />
         <Metric label="Draft readiness" value={ready ? 'Ready' : 'Blocked'} ok={ready} />
       </section>
 
-      {draftConfigured && <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">A draft is already configured. Participant, order, and override changes are locked until its rehearsal is deleted or official draft is canceled.</p>}
+      {draftConfigured && <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">The official schedule is set, so participants and draft order are locked. Keeper selections can still be completed or reopened until the draft starts.</p>}
       {message && <p className="rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-900">{message}</p>}
 
       <section className="rounded-2xl border border-white/10 bg-slate-900 p-5">
@@ -103,7 +104,7 @@ export default function SeasonSetup({ seasonId, participants: initialParticipant
               <div>
                 <div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">{participant.name}</h3>{participant.isReplacement && <Badge>Replacement</Badge>}{participant.releaseOverride && <Badge>Override</Badge>}</div>
                 <p className="text-sm text-slate-500">{participant.email}</p>
-                <p className="mt-1 text-xs text-slate-600">{participant.inheritedCount ? `${participant.releasedNFL} NFL and ${participant.releasedCollege} college released` : 'New seat · 10 open slots'} · {participant.decisionsSubmitted ? 'Submitted' : 'Not submitted'}</p>
+                <p className="mt-1 text-xs text-slate-600">{participant.inheritedCount ? `${participant.releasedNFL} NFL and ${participant.releasedCollege} college released` : 'New seat · 10 open slots'} · {participant.decisionsLocked ? 'Locked' : 'Not locked'}</p>
               </div>
               <div className="flex gap-1">
                 <button aria-label={`Move ${participant.name} earlier`} className="rounded-lg border border-slate-300 px-3 py-2 disabled:opacity-30" disabled={draftConfigured || index === 0} onClick={() => move(index, -1)}>↑</button>
@@ -111,6 +112,7 @@ export default function SeasonSetup({ seasonId, participants: initialParticipant
               </div>
               <div className="flex flex-wrap gap-2">
                 {participant.inheritedCount > 0 && <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled={draftConfigured || busy !== null} onClick={() => request(`/api/seasons/${seasonId}/participants/${participant.id}`, 'PATCH', { releaseOverride: !participant.releaseOverride }, `override-${participant.id}`)}>{participant.releaseOverride ? 'Remove override' : 'Allow release override'}</button>}
+                {participant.decisionsLocked && <button className="rounded-lg border border-amber-300 px-3 py-2 text-sm font-semibold text-amber-200 disabled:opacity-50" disabled={!keeperReopenAllowed || busy !== null} onClick={() => request(`/api/seasons/${seasonId}/participants/${participant.id}`, 'PATCH', { reopenKeeperSelections: true }, `reopen-${participant.id}`)}>Reopen keepers</button>}
                 <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled={draftConfigured || busy !== null || availableMembers.length === 0} onClick={() => setReplacementFor(replacementFor === participant.id ? null : participant.id)}>Replace</button>
               </div>
               {replacementFor === participant.id && <div className="flex gap-2 lg:col-start-2 lg:col-span-3"><select className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2" defaultValue="" id={`replacement-${participant.id}`}><option disabled value="">Choose an active pool member</option>{availableMembers.map((member) => <option key={member.id} value={member.id}>{member.name} — {member.email}</option>)}</select><button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white" onClick={() => { const select = document.getElementById(`replacement-${participant.id}`) as HTMLSelectElement | null; void replace(participant.id, select?.value ?? '') }}>Confirm replacement</button></div>}

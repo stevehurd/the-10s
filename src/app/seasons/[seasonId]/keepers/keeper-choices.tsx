@@ -107,8 +107,9 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
     }
   }
 
-  async function submit() {
+  async function lockSelections() {
     if (!participant) return
+    if (!window.confirm('Lock these keeper selections? You will need a commissioner to reopen them.')) return
     setSubmitting(true)
     setError(null)
     try {
@@ -118,11 +119,11 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
         body: JSON.stringify({ participantId: participant.id }),
       })
       const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || 'Unable to submit choices')
+      if (!response.ok) throw new Error(payload.error || 'Unable to lock choices')
       router.push(`/?season=${encodeURIComponent(seasonId)}`)
       router.refresh()
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Unable to submit choices')
+      setError(submitError instanceof Error ? submitError.message : 'Unable to lock choices')
     } finally {
       setSubmitting(false)
     }
@@ -156,7 +157,7 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
             <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Keep or Release</h1>
             <p className="mt-2 max-w-2xl text-slate-400">
               A kept team stays in the same numbered slot. Releasing it opens that round in the draft.
-              You can change choices until the draft starts.
+              You can change choices until you lock them. Locked choices stay private until everyone is locked.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3">
@@ -177,10 +178,10 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
           <Requirement label="Choices remaining" current={pendingCount} required={0} inverse />
         </section>
 
-        {participant.decisionsSubmittedAt ? (
+        {participant.decisionsLockedAt ? (
           <div className="mb-5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-slate-300">
             <span className="mr-2 font-black text-blue-300">✓</span>
-            Choices submitted. You may still revise them until the draft starts.
+            Choices locked. A commissioner must reopen them before they can be changed.
           </div>
         ) : null}
 
@@ -246,10 +247,10 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
           <button
             className="w-full rounded-xl bg-blue-600 px-5 py-3.5 font-bold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!ready || submitting || Boolean(participant.decisionsLockedAt)}
-            onClick={() => void submit()}
+            onClick={() => void lockSelections()}
             type="button"
           >
-            {submitting ? 'Submitting…' : participant.decisionsSubmittedAt ? 'Confirm updated choices' : 'Submit choices'}
+            {submitting ? 'Locking…' : participant.decisionsLockedAt ? 'Selections locked' : 'Lock keeper selections'}
           </button>
         </div>
         </div>

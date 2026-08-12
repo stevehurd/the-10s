@@ -8,6 +8,7 @@ import TeamMark from '@/components/team-mark'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
 import { editableRosterNickname, playerDisplayName } from '@/lib/player-settings-rules'
+import { areKeeperSelectionsRevealed } from '@/lib/seasons/keeper-visibility'
 import { compareStandings } from '@/lib/standings-ranking'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic'
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ season?: string; preview?: string; seeded?: string }>
+  searchParams: Promise<{ season?: string; preview?: string; keepers?: string; seeded?: string }>
 }) {
   const context = await getCurrentAppUser()
   if (!context) {
@@ -127,7 +128,7 @@ export default async function Home({
     (participant) => participant.userId === context.appUser.id,
   )
   const previewAllowed =
-    membership.role === 'COMMISSIONER' && membership.pool.slug === 'the-10s-development'
+    process.env.NODE_ENV === 'development' && membership.role === 'COMMISSIONER'
   const previewPhase = previewAllowed && ['preseason', 'active', 'complete'].includes(query.preview ?? '')
     ? query.preview
     : null
@@ -142,6 +143,9 @@ export default async function Home({
   const isComplete = displayedSeasonStatus === 'FINALIZED'
   const isInSeason = displayedSeasonStatus === 'ACTIVE'
   const showKeeperTracker = isPreseason
+  const keeperPreview = previewAllowed && isPreseason && ['unlocked', 'locked', 'revealed'].includes(query.keepers ?? '')
+    ? query.keepers
+    : null
   const keeperTracker = [...participants]
     .sort(
       (left, right) =>
@@ -149,25 +153,38 @@ export default async function Home({
           (right.baseDraftOrder ?? Number.MAX_SAFE_INTEGER) ||
         left.user.name.localeCompare(right.user.name),
     )
-    .map((participant) => ({
-      id: participant.id,
-      name: playerDisplayName(participant.user.name, participant.poolSeat.label),
-      playerName: participant.user.name,
-      hasNickname: Boolean(editableRosterNickname(participant.poolSeat.label)),
-      isViewer: participant.userId === context.appUser.id,
-      submitted: Boolean(participant.decisionsSubmittedAt),
-      keptTeams: participant.rosterSlots
-        .filter((slot) => slot.retentionChoice === 'KEEP' && slot.team)
-        .map((slot) => ({
-          id: slot.team!.id,
-          name: slot.team!.name,
-          abbreviation: slot.team!.abbreviation,
-          logoUrl: slot.team!.logoUrl,
-          league: slot.team!.league,
-          slot: slot.number,
-        })),
-    }))
-  const submittedKeeperCount = keeperTracker.filter((participant) => participant.submitted).length
+    .map((participant) => {
+      const isViewer = participant.userId === context.appUser.id
+      const previewLocked = keeperPreview === 'revealed' || (keeperPreview === 'locked' && isViewer)
+      const locked = keeperPreview ? previewLocked : Boolean(participant.decisionsLockedAt)
+      const submitted = keeperPreview
+        ? (keeperPreview !== 'unlocked' && isViewer) || keeperPreview === 'revealed'
+        : Boolean(participant.decisionsSubmittedAt)
+      return {
+        id: participant.id,
+        name: playerDisplayName(participant.user.name, participant.poolSeat.label),
+        playerName: participant.user.name,
+        hasNickname: Boolean(editableRosterNickname(participant.poolSeat.label)),
+        isViewer,
+        submitted,
+        locked,
+        keptTeams: participant.rosterSlots
+          .filter((slot) => slot.retentionChoice === 'KEEP' && slot.team)
+          .map((slot) => ({
+            id: slot.team!.id,
+            name: slot.team!.name,
+            abbreviation: slot.team!.abbreviation,
+            logoUrl: slot.team!.logoUrl,
+            league: slot.team!.league,
+            slot: slot.number,
+          })),
+      }
+    })
+  const lockedKeeperCount = keeperTracker.filter((participant) => participant.locked).length
+  const keeperSelectionsRevealed = keeperPreview
+    ? keeperPreview === 'revealed'
+    : areKeeperSelectionsRevealed(participants)
+  const displayedViewerKeeperState = keeperTracker.find((participant) => participant.isViewer)
   const rosterRecordByTeam = isPreseason ? priorRecordByTeam : recordByTeam
   const champion = isComplete ? standings[0] ?? null : null
   const championNickname = champion ? editableRosterNickname(champion.poolSeat.label) : null
@@ -225,9 +242,35 @@ export default async function Home({
                   )
                 })}
               </nav>
-              <form action="/api/admin/seed-dashboard-states" method="post">
-                <button className="rounded-lg border border-blue-500/30 px-3 py-2 text-sm font-bold text-blue-300 transition hover:bg-blue-500/10" type="submit">Seed stress-test seasons</button>
-              </form>
+              {isPreseason ? (
+                <nav aria-label="Preview keeper state" className="flex flex-wrap gap-2 border-l border-white/10 pl-2">
+                  {[
+                    { label: 'Actual keepers', value: null },
+                    { label: 'Not locked', value: 'unlocked' },
+                    { label: 'You locked', value: 'locked' },
+                    { label: 'All locked · Revealed', value: 'revealed' },
+                  ].map((option) => {
+                    const selected = keeperPreview === option.value
+                    const params = new URLSearchParams({ season: selectedSeason.id, preview: 'preseason' })
+                    if (option.value) params.set('keepers', option.value)
+                    return (
+                      <Link
+                        aria-current={selected ? 'page' : undefined}
+                        className={`rounded-lg px-3 py-2 text-sm font-bold transition ${selected ? 'bg-emerald-600 text-white' : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                        href={`/?${params.toString()}`}
+                        key={option.label}
+                      >
+                        {option.label}
+                      </Link>
+                    )
+                  })}
+                </nav>
+              ) : null}
+              {membership.pool.slug === 'the-10s-development' ? (
+                <form action="/api/admin/seed-dashboard-states" method="post">
+                  <button className="rounded-lg border border-blue-500/30 px-3 py-2 text-sm font-bold text-blue-300 transition hover:bg-blue-500/10" type="submit">Seed stress-test seasons</button>
+                </form>
+              ) : null}
               </div>
             </div>
           </section>
@@ -275,9 +318,9 @@ export default async function Home({
         {isPreseason && viewerParticipant ? (
           <section className="mb-6">
             <KeeperStatusCallout
-              locked={Boolean(viewerParticipant.decisionsLockedAt)}
+              locked={displayedViewerKeeperState?.locked ?? Boolean(viewerParticipant.decisionsLockedAt)}
               seasonId={selectedSeason.id}
-              submitted={Boolean(viewerParticipant.decisionsSubmittedAt)}
+              submitted={displayedViewerKeeperState?.submitted ?? Boolean(viewerParticipant.decisionsSubmittedAt)}
             />
           </section>
         ) : null}
@@ -286,22 +329,23 @@ export default async function Home({
           <section className="mb-7 rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><h3 className="text-lg font-semibold">Round-one draft order</h3><p className="text-sm text-slate-400">Last place from last season picks first; round two reverses the order.</p></div><span className="text-xs font-bold uppercase tracking-wider text-slate-500">Snake draft</span></div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {keeperTracker.map((participant, index) => <div className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${participant.isViewer ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-slate-950/30'}`} key={participant.id}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-sm font-black">{index + 1}</span><div className="min-w-0"><p className="truncate font-semibold">{participant.name}{participant.isViewer ? ' · You' : ''}</p>{participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}</div></div>)}
+              {keeperTracker.map((participant, index) => <div className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${participant.isViewer ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-slate-950/30'}`} key={participant.id}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-sm font-black">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate font-semibold">{participant.name}{participant.isViewer ? ' · You' : ''}</p>{participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}</div><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${participant.locked ? 'bg-emerald-300/15 text-emerald-200' : 'bg-amber-300/15 text-amber-200'}`}>{participant.locked ? 'Keepers locked' : 'Not locked'}</span></div>)}
             </div>
+            <p className="mt-3 text-right text-xs font-semibold text-slate-500">{lockedKeeperCount} of {keeperTracker.length} locked</p>
           </section>
         ) : null}
 
-        {showKeeperTracker ? (
+        {showKeeperTracker && keeperSelectionsRevealed ? (
           <section className="mb-7 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
             <div className="flex flex-col justify-between gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center">
               <div>
-                <h3 className="text-lg font-semibold">Keep/Release tracker</h3>
+                <h3 className="text-lg font-semibold">Locked keeper selections</h3>
                 <p className="text-sm text-slate-400">
-                  Submitted keeper lists are visible to everyone in the league.
+                  Every player has locked their choices, so keeper selections are now visible.
                 </p>
               </div>
               <div className="shrink-0 rounded-full bg-emerald-300/10 px-3 py-1.5 text-sm font-bold text-emerald-300">
-                {submittedKeeperCount} of {keeperTracker.length} submitted
+                All selections locked
               </div>
             </div>
             <div className="divide-y divide-white/5">
@@ -314,16 +358,14 @@ export default async function Home({
                       </p>
                       {participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}
                       <p className="mt-0.5 text-xs text-slate-500">
-                        {participant.submitted
-                          ? `${participant.keptTeams.length} team${participant.keptTeams.length === 1 ? '' : 's'} kept`
-                          : 'Keeper choices remain private until submitted'}
+                        {`${participant.keptTeams.length} team${participant.keptTeams.length === 1 ? '' : 's'} kept`}
                       </p>
                     </div>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${participant.submitted ? 'bg-emerald-300/15 text-emerald-200' : 'bg-amber-300/15 text-amber-200'}`}>
-                      {participant.submitted ? 'Submitted' : 'In progress'}
+                    <span className="shrink-0 rounded-full bg-emerald-300/15 px-2.5 py-1 text-xs font-bold text-emerald-200">
+                      Locked
                     </span>
                   </div>
-                  {participant.submitted ? (
+                  {participant.locked ? (
                     <div className="border-t border-white/5 px-4 pb-4 pt-3 sm:px-5">
                       {participant.keptTeams.length > 0 ? (
                         <div className="flex flex-wrap gap-2">

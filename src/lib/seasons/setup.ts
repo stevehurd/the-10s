@@ -1,4 +1,7 @@
+import { Prisma } from '@prisma/client'
+
 import { prisma } from '@/lib/db'
+import { retryPrismaWriteConflict } from '@/lib/db/write-conflict-retry'
 import {
   LEAGUES,
   validateReleaseMinimums,
@@ -121,7 +124,7 @@ export async function setRetentionChoice(input: {
   actorUserId: string
   actorIsCommissioner: boolean
 }) {
-  return prisma.$transaction(async (tx) => {
+  return retryPrismaWriteConflict(() => prisma.$transaction(async (tx) => {
     const slot = await tx.rosterSlot.findUnique({
       where: { id: input.rosterSlotId },
       include: { seasonParticipant: true, season: true },
@@ -169,7 +172,7 @@ export async function setRetentionChoice(input: {
     })
 
     return updated
-  })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }))
 }
 
 export async function submitRetentionDecisions(input: {
@@ -178,71 +181,71 @@ export async function submitRetentionDecisions(input: {
   actorUserId: string
   actorIsCommissioner: boolean
 }) {
-  const participant = await prisma.seasonParticipant.findUnique({
-    where: { id: input.participantId },
-    include: {
-      season: true,
-      rosterSlots: { include: { inheritedTeam: true }, orderBy: { number: 'asc' } },
-    },
-  })
-  if (!participant || participant.seasonId !== input.seasonId) {
-    throw new DraftRuleError('Participant not found', 'NOT_FOUND', 404)
-  }
-  if (!input.actorIsCommissioner && participant.userId !== input.actorUserId) {
-    throw new DraftRuleError('You cannot submit another participant’s decisions', 'FORBIDDEN', 403)
-  }
-  if (participant.decisionsLockedAt) {
-    throw new DraftRuleError('Keep and Release decisions are locked', 'DECISIONS_LOCKED', 409)
-  }
-  if (!participant.season.poolId) {
-    throw new DraftRuleError('Season is not assigned to a pool', 'MISSING_POOL')
-  }
+  return retryPrismaWriteConflict(() => prisma.$transaction(async (tx) => {
+    const participant = await tx.seasonParticipant.findUnique({
+      where: { id: input.participantId },
+      include: {
+        season: true,
+        rosterSlots: { include: { inheritedTeam: true }, orderBy: { number: 'asc' } },
+      },
+    })
+    if (!participant || participant.seasonId !== input.seasonId) {
+      throw new DraftRuleError('Participant not found', 'NOT_FOUND', 404)
+    }
+    if (!input.actorIsCommissioner && participant.userId !== input.actorUserId) {
+      throw new DraftRuleError('You cannot lock another participant’s decisions', 'FORBIDDEN', 403)
+    }
+    if (participant.decisionsLockedAt) {
+      throw new DraftRuleError('Keep and Release decisions are locked', 'DECISIONS_LOCKED', 409)
+    }
+    if (!participant.season.poolId) {
+      throw new DraftRuleError('Season is not assigned to a pool', 'MISSING_POOL')
+    }
 
-  const pending = participant.rosterSlots.find(
-    (slot) => slot.inheritedTeamId && slot.retentionChoice === 'PENDING',
-  )
-  if (pending) {
-    throw new DraftRuleError(`Choose Keep or Release for slot ${pending.number}`, 'PENDING_DECISION')
-  }
+    const pending = participant.rosterSlots.find(
+      (slot) => slot.inheritedTeamId && slot.retentionChoice === 'PENDING',
+    )
+    if (pending) {
+      throw new DraftRuleError(`Choose Keep or Release for slot ${pending.number}`, 'PENDING_DECISION')
+    }
 
-  const inheritedSlots: EngineRosterSlot[] = participant.rosterSlots.map((slot) => ({
-    number: slot.number,
-    state: 'KEEPER',
-    team: slot.inheritedTeam
-      ? {
-          id: slot.inheritedTeam.id,
-          name: slot.inheritedTeam.name,
-          league: slot.inheritedTeam.league as League,
-          priorRecord: null,
-        }
-      : null,
-  }))
-  const released = new Set(
-    participant.rosterSlots
-      .filter((slot) => slot.retentionChoice === 'RELEASE')
-      .map((slot) => slot.number),
-  )
-  const inheritedCount = participant.rosterSlots.filter((slot) => slot.inheritedTeamId).length
-  const validation =
-    inheritedCount === 0
-      ? { valid: true, releasedNFL: 0, releasedCollege: 0, errors: [] }
-      : validateReleaseMinimums(inheritedSlots, released, participant.releaseOverride)
-  if (!validation.valid) {
-    throw new DraftRuleError(validation.errors.join('. '), 'RELEASE_MINIMUM')
-  }
+    const inheritedSlots: EngineRosterSlot[] = participant.rosterSlots.map((slot) => ({
+      number: slot.number,
+      state: 'KEEPER',
+      team: slot.inheritedTeam
+        ? {
+            id: slot.inheritedTeam.id,
+            name: slot.inheritedTeam.name,
+            league: slot.inheritedTeam.league as League,
+            priorRecord: null,
+          }
+        : null,
+    }))
+    const released = new Set(
+      participant.rosterSlots
+        .filter((slot) => slot.retentionChoice === 'RELEASE')
+        .map((slot) => slot.number),
+    )
+    const inheritedCount = participant.rosterSlots.filter((slot) => slot.inheritedTeamId).length
+    const validation =
+      inheritedCount === 0
+        ? { valid: true, releasedNFL: 0, releasedCollege: 0, errors: [] }
+        : validateReleaseMinimums(inheritedSlots, released, participant.releaseOverride)
+    if (!validation.valid) {
+      throw new DraftRuleError(validation.errors.join('. '), 'RELEASE_MINIMUM')
+    }
 
-  return prisma.$transaction(async (tx) => {
     const submittedAt = new Date()
     const updated = await tx.seasonParticipant.update({
       where: { id: participant.id },
-      data: { decisionsSubmittedAt: submittedAt },
+      data: { decisionsSubmittedAt: submittedAt, decisionsLockedAt: submittedAt },
     })
     await tx.auditEvent.create({
       data: {
         poolId: participant.season.poolId!,
         seasonId: participant.seasonId,
         actorUserId: input.actorUserId,
-        action: 'RETENTION_DECISIONS_SUBMITTED',
+        action: 'RETENTION_DECISIONS_LOCKED',
         entityType: 'SeasonParticipant',
         entityId: participant.id,
         data: {
@@ -253,5 +256,5 @@ export async function submitRetentionDecisions(input: {
       },
     })
     return updated
-  })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }))
 }

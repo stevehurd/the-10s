@@ -59,6 +59,7 @@ export default async function SeasonSetupPage({ params }: { params: Promise<{ se
           key={season.participants.map((participant) => `${participant.id}:${participant.userId}:${participant.baseDraftOrder}:${participant.updatedAt.toISOString()}`).join('|')}
           availableMembers={availableMembers}
           draftConfigured={season.draftSessions.length > 0}
+          keeperReopenAllowed={season.draftSessions.every((session) => session.mode === 'OFFICIAL' && session.status === 'SCHEDULED')}
           participants={season.participants.map((participant) => ({
             id: participant.id,
             userId: participant.userId,
@@ -68,6 +69,7 @@ export default async function SeasonSetupPage({ params }: { params: Promise<{ se
             isReplacement: participant.isReplacement,
             releaseOverride: participant.releaseOverride,
             decisionsSubmitted: Boolean(participant.decisionsSubmittedAt),
+            decisionsLocked: Boolean(participant.decisionsLockedAt),
             inheritedCount: participant.rosterSlots.filter((slot) => slot.inheritedTeamId).length,
             releasedNFL: participant.rosterSlots.filter((slot) => slot.retentionChoice === 'RELEASE' && slot.inheritedTeam?.league === 'NFL').length,
             releasedCollege: participant.rosterSlots.filter((slot) => slot.retentionChoice === 'RELEASE' && slot.inheritedTeam?.league === 'COLLEGE').length,

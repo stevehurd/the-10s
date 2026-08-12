@@ -19,7 +19,7 @@ export default async function SeasonsAdminPage() {
     include: {
       pool: { select: { name: true } },
       _count: { select: { participants: true, draftSessions: true } },
-      participants: { select: { decisionsSubmittedAt: true } },
+      participants: { select: { decisionsLockedAt: true } },
       teamEligibility: { select: { status: true, leagueSnapshot: true } },
     },
   })
@@ -36,7 +36,7 @@ export default async function SeasonsAdminPage() {
 
         <section className="grid gap-4 md:grid-cols-2">
           {seasons.map((season) => {
-            const submitted = season.participants.filter((participant) => participant.decisionsSubmittedAt).length
+            const locked = season.participants.filter((participant) => participant.decisionsLockedAt).length
             const eligibilityRemaining = season.teamEligibility.filter(
               (entry) => entry.leagueSnapshot === 'COLLEGE' && ['PENDING', 'REVIEW'].includes(entry.status),
             ).length
@@ -51,7 +51,7 @@ export default async function SeasonsAdminPage() {
                 </div>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   <Metric label="Participants" value={season._count.participants} />
-                  <Metric label="Submitted" value={`${submitted}/${season._count.participants}`} />
+                  <Metric label="Keepers locked" value={`${locked}/${season._count.participants}`} />
                   <Metric label="Reviews" value={eligibilityRemaining} />
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">

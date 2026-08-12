@@ -9,7 +9,7 @@ export default function KeeperStatusCallout({
   submitted: boolean
   locked?: boolean
 }) {
-  const complete = submitted
+  const complete = locked
 
   return (
     <Link
@@ -30,28 +30,28 @@ export default function KeeperStatusCallout({
                     ? 'Complete · Locked'
                     : 'Locked · Not submitted'
                   : submitted
-                    ? 'Complete'
+                    ? 'Ready to lock'
                     : 'Not submitted'}
               </span>
             </div>
             <h2 className="mt-2 text-xl font-bold sm:text-2xl">
-              {submitted
-                ? 'Your keeper choices are submitted'
-                : locked
-                  ? 'Keeper choices were not submitted'
+              {locked
+                ? 'Your keeper choices are locked'
+                : submitted
+                  ? 'Lock your keeper choices'
                   : 'Complete your keeper choices'}
             </h2>
             <p className="mt-1 max-w-2xl text-sm text-slate-300">
               {locked
-                ? 'The draft has started, so your choices are now locked.'
+                ? 'Your choices cannot be changed unless a commissioner reopens them.'
                 : submitted
-                  ? 'Review or update your choices any time before the official draft starts.'
+                  ? 'Review your choices, then lock them to make them final.'
                   : 'Choose which teams to keep and release before the official draft begins.'}
             </p>
           </div>
         </div>
         <span className="w-full shrink-0 self-start rounded-xl bg-blue-600 px-4 py-2.5 text-center text-sm font-black sm:w-auto sm:self-auto">
-          {locked ? 'Review choices' : submitted ? 'Review or update' : 'Choose Keep or Release'} <span aria-hidden="true">→</span>
+          {locked ? 'Review choices' : submitted ? 'Review and lock' : 'Choose Keep or Release'} <span aria-hidden="true">→</span>
         </span>
       </div>
     </Link>

@@ -75,6 +75,7 @@ export async function replaceSeasonParticipant(input: {
         isReplacement: true,
         releaseOverride: false,
         decisionsSubmittedAt: null,
+        decisionsLockedAt: null,
       },
     })
     await tx.auditEvent.create({
@@ -193,7 +194,11 @@ export async function setParticipantReleaseOverride(input: {
   return prisma.$transaction(async (tx) => {
     const updated = await tx.seasonParticipant.update({
       where: { id: participant.id },
-      data: { releaseOverride: input.releaseOverride, decisionsSubmittedAt: null },
+      data: {
+        releaseOverride: input.releaseOverride,
+        decisionsSubmittedAt: null,
+        decisionsLockedAt: null,
+      },
     })
     await tx.auditEvent.create({
       data: {
@@ -204,6 +209,59 @@ export async function setParticipantReleaseOverride(input: {
         entityType: 'SeasonParticipant',
         entityId: participant.id,
         data: { releaseOverride: input.releaseOverride },
+      },
+    })
+    return updated
+  })
+}
+
+export async function reopenParticipantKeeperSelections(input: {
+  seasonId: string
+  participantId: string
+  actorUserId: string
+}) {
+  const season = await prisma.season.findUnique({
+    where: { id: input.seasonId },
+    include: {
+      draftSessions: {
+        where: { status: { not: 'CANCELED' } },
+        select: { mode: true, status: true, _count: { select: { turns: true } } },
+      },
+    },
+  })
+  if (!season?.poolId) throw new DraftRuleError('Season not found', 'NOT_FOUND', 404)
+  if (!['SETUP', 'DRAFT'].includes(season.status)) {
+    throw new DraftRuleError('Only a setup or draft season can be changed', 'SEASON_LOCKED', 409)
+  }
+  const initializedDraft = season.draftSessions.find(
+    (session) => session.mode !== 'OFFICIAL' || session.status !== 'SCHEDULED' || session._count.turns > 0,
+  )
+  if (initializedDraft) {
+    throw new DraftRuleError('Keeper selections cannot be reopened after a draft board is initialized', 'DRAFT_ALREADY_CONFIGURED', 409)
+  }
+  const participant = await prisma.seasonParticipant.findUnique({
+    where: { id: input.participantId },
+  })
+  if (!participant || participant.seasonId !== season.id) {
+    throw new DraftRuleError('Participant not found', 'NOT_FOUND', 404)
+  }
+  if (!participant.decisionsLockedAt) {
+    throw new DraftRuleError('Keeper selections are not locked', 'DECISIONS_NOT_LOCKED', 409)
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.seasonParticipant.update({
+      where: { id: participant.id },
+      data: { decisionsSubmittedAt: null, decisionsLockedAt: null },
+    })
+    await tx.auditEvent.create({
+      data: {
+        poolId: season.poolId!,
+        seasonId: season.id,
+        actorUserId: input.actorUserId,
+        action: 'RETENTION_DECISIONS_REOPENED',
+        entityType: 'SeasonParticipant',
+        entityId: participant.id,
       },
     })
     return updated

@@ -15,7 +15,7 @@ export default async function AdminPage() {
     where: { poolId: membership.poolId },
     orderBy: { year: 'desc' },
     include: {
-      participants: { select: { decisionsSubmittedAt: true } },
+      participants: { select: { decisionsLockedAt: true } },
       teamEligibility: { select: { leagueSnapshot: true, status: true } },
       draftSessions: {
         where: { status: { not: 'CANCELED' } },
@@ -33,7 +33,7 @@ export default async function AdminPage() {
       include: { actor: { select: { name: true } } },
     }),
   ])
-  const submitted = season?.participants.filter((participant) => participant.decisionsSubmittedAt).length ?? 0
+  const locked = season?.participants.filter((participant) => participant.decisionsLockedAt).length ?? 0
   const unresolvedEligibility = season?.teamEligibility.filter(
     (entry) => entry.leagueSnapshot === 'COLLEGE' && ['PENDING', 'REVIEW'].includes(entry.status),
   ).length ?? 0
@@ -44,7 +44,7 @@ export default async function AdminPage() {
       ? 'SEASON'
       : latestDraft
         ? 'DRAFT'
-        : submitted > 0
+        : locked > 0
           ? 'KEEPERS'
           : 'SETUP'
 
@@ -72,7 +72,7 @@ export default async function AdminPage() {
 
         <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard detail="Active pool access" label="Members" value={activeMembers} />
-          <StatCard detail="Keep/Release complete" label="Choices" value={season ? `${submitted}/${season.participants.length}` : '—'} warning={Boolean(season && submitted !== season.participants.length)} />
+          <StatCard detail="Keep/Release final" label="Locked" value={season ? `${locked}/${season.participants.length}` : '—'} warning={Boolean(season && locked !== season.participants.length)} />
           <StatCard detail="College teams requiring action" label="Eligibility" value={unresolvedEligibility} warning={unresolvedEligibility > 0} />
           <StatCard detail={latestDraft ? `${latestDraft.mode.toLowerCase()} · ${latestDraft.status.toLowerCase()}` : 'Not created yet'} label="Draft" value={latestDraft ? latestDraft.status : 'Pending'} />
         </section>
@@ -82,7 +82,7 @@ export default async function AdminPage() {
             <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Next actions</p><h2 className="mt-1 text-xl font-black">Get draft-ready</h2></div><span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">Commissioner</span></div>
             <div className="mt-5 space-y-3">
               <ActionRow done={Boolean(season && season.participants.length > 0)} href={season ? `/admin/seasons/${season.id}/setup` : '/admin/seasons'} label="Confirm participants and base draft order" />
-              <ActionRow done={Boolean(season && submitted === season.participants.length && season.participants.length > 0)} href={season ? `/admin/seasons/${season.id}/setup` : '/admin/seasons'} label="Collect every Keep/Release submission" />
+              <ActionRow done={Boolean(season && locked === season.participants.length && season.participants.length > 0)} href={season ? `/admin/seasons/${season.id}/setup` : '/admin/seasons'} label="Collect every locked keeper selection" />
               <ActionRow done={Boolean(season && unresolvedEligibility === 0 && season.teamEligibility.length > 0)} href={season ? `/admin/seasons/${season.id}/eligibility` : '/admin/seasons'} label="Sync the season's college team pool" />
               <ActionRow done={Boolean(latestDraft)} href="/admin/draft" label="Create and run a rehearsal draft" />
               {season && (season.status === 'ACTIVE' || season.status === 'FINALIZED') ? (
