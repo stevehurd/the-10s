@@ -540,7 +540,7 @@ export default function DraftRoom({
         </div>
       ) : null}
 
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur">
+      <header className="relative z-30 border-b border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur md:sticky md:top-0">
         <div className="mx-auto grid max-w-[1600px] gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
           <div className="flex items-center gap-3">
             <div>
@@ -657,7 +657,7 @@ export default function DraftRoom({
         </section>
       ) : null}
 
-      <nav aria-label="Draft views" className="sticky top-[89px] z-20 border-b border-white/10 bg-slate-900/95 px-4 backdrop-blur">
+      <nav aria-label="Draft views" className="relative z-20 border-b border-white/10 bg-slate-900/95 px-4 backdrop-blur md:sticky md:top-[89px]">
         <div className="mx-auto grid max-w-[1600px] grid-cols-3">
         {visibleTabs.map((tab) => (
           <button
@@ -673,7 +673,7 @@ export default function DraftRoom({
         </div>
       </nav>
 
-      <div className="mx-auto max-w-[1600px] p-4 lg:p-6">
+      <div className={`mx-auto max-w-[1600px] p-4 lg:p-6 ${selectedTeam ? 'pb-48 sm:pb-32' : ''}`}>
         {displayedTab === 'PICK' ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,.55fr)]">
           <section className="order-2 lg:order-1">
@@ -893,8 +893,8 @@ export default function DraftRoom({
       </div>
 
       {selectedTeam ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-orange-400/40 bg-slate-900 p-4 shadow-2xl">
-          <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-orange-400/40 bg-slate-900 px-4 pt-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] shadow-2xl sm:p-4">
+          <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="flex min-w-0 items-center gap-3">
               <TeamMark abbreviation={selectedTeam.abbreviation} logoUrl={selectedTeam.logoUrl} size="lg" />
               <div className="min-w-0">
@@ -909,12 +909,12 @@ export default function DraftRoom({
               </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button className="rounded-xl px-4 py-3 text-sm font-semibold text-slate-300" onClick={() => setSelectedTeam(null)} type="button">
+            <div className="grid grid-cols-[auto_1fr] gap-2 sm:flex">
+              <button className="min-h-11 rounded-xl px-3 py-2 text-sm font-semibold text-slate-300 sm:px-4 sm:py-3" onClick={() => setSelectedTeam(null)} type="button">
                 Clear queue
               </button>
               <button
-                className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 rounded-xl bg-orange-500 px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:px-5 sm:py-3 sm:text-base"
                 disabled={submitting || !canPick || !state.availableTeams.some((team) => team.id === selectedTeam.id)}
                 onClick={submitSelection}
                 type="button"

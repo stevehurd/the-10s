@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+import MemberHeader from '@/components/member-header'
 import TeamMark from '@/components/team-mark'
 
 interface Team {
@@ -138,14 +139,21 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <MemberHeader
+        active="preparation"
+        commissioner={state.viewerIsCommissioner}
+        seasonId={state.season.id}
+        userName={participant.user.name}
+      />
+      <main className="px-4 py-6 sm:py-8">
+        <div className="mx-auto max-w-6xl">
+          <header className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-300">
               {state.season.name}
             </p>
-            <h1 className="mt-2 text-3xl font-semibold">Keep or Release</h1>
+            <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Keep or Release</h1>
             <p className="mt-2 max-w-2xl text-slate-400">
               A kept team stays in the same numbered slot. Releasing it opens that round in the draft.
               You can change choices until the draft starts.
@@ -155,7 +163,7 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
             <p className="text-xs uppercase tracking-wider text-slate-400">Roster owner</p>
             <p className="font-semibold">{participant.user.name}</p>
           </div>
-        </header>
+          </header>
 
         {error ? (
           <p className="mb-5 rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-rose-100">
@@ -234,7 +242,7 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
           })}
         </section>
 
-        <div className="sticky bottom-0 mt-8 border-t border-white/10 bg-slate-950/95 py-4 backdrop-blur">
+        <div className="sticky bottom-0 mt-8 border-t border-white/10 bg-slate-950/95 pt-4 pr-14 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:pr-0">
           <button
             className="w-full rounded-xl bg-blue-600 px-5 py-3.5 font-bold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!ready || submitting || Boolean(participant.decisionsLockedAt)}
@@ -244,8 +252,9 @@ export default function KeeperChoices({ seasonId }: { seasonId: string }) {
             {submitting ? 'Submitting…' : participant.decisionsSubmittedAt ? 'Confirm updated choices' : 'Submit choices'}
           </button>
         </div>
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   )
 }
 

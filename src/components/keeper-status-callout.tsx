@@ -50,7 +50,7 @@ export default function KeeperStatusCallout({
             </p>
           </div>
         </div>
-        <span className="shrink-0 self-start rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black sm:self-auto">
+        <span className="w-full shrink-0 self-start rounded-xl bg-blue-600 px-4 py-2.5 text-center text-sm font-black sm:w-auto sm:self-auto">
           {locked ? 'Review choices' : submitted ? 'Review or update' : 'Choose Keep or Release'} <span aria-hidden="true">→</span>
         </span>
       </div>
