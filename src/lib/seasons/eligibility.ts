@@ -98,6 +98,27 @@ export async function syncSeasonEligibility(seasonId: string, actorUserId: strin
   const previousByTeamId = new Map(previousEligibility.map((entry) => [entry.teamId, entry]))
   const existingEligibility = await prisma.seasonTeamEligibility.findMany({ where: { seasonId } })
   const existingByTeamId = new Map(existingEligibility.map((entry) => [entry.teamId, entry]))
+  const auditedDecisions = await prisma.auditEvent.findMany({
+    where: {
+      seasonId,
+      entityType: 'SeasonTeamEligibility',
+      action: { in: ['TEAM_ELIGIBILITY_APPROVED', 'TEAM_ELIGIBILITY_INACTIVE'] },
+      entityId: { not: null },
+    },
+    orderBy: { createdAt: 'desc' },
+    select: { entityId: true, action: true, actorUserId: true },
+  })
+  const auditedDecisionByEligibilityId = new Map<
+    string,
+    { status: 'APPROVED' | 'INACTIVE'; actorUserId: string | null }
+  >()
+  for (const decision of auditedDecisions) {
+    if (!decision.entityId || auditedDecisionByEligibilityId.has(decision.entityId)) continue
+    auditedDecisionByEligibilityId.set(decision.entityId, {
+      status: decision.action === 'TEAM_ELIGIBILITY_APPROVED' ? 'APPROVED' : 'INACTIVE',
+      actorUserId: decision.actorUserId,
+    })
+  }
 
   const syncedTeams = await reconcileTeams([...nflTeams, ...collegeTeams])
 
@@ -119,6 +140,9 @@ export async function syncSeasonEligibility(seasonId: string, actorUserId: strin
 
     for (const { team, teamData } of syncedTeams) {
       const existing = existingByTeamId.get(team.id)
+      const auditedDecision = existing
+        ? auditedDecisionByEligibilityId.get(existing.id) ?? null
+        : null
       const decision = teamData.league === 'NFL'
         ? {
             kind: 'UNCHANGED' as const,
@@ -134,6 +158,7 @@ export async function syncSeasonEligibility(seasonId: string, actorUserId: strin
             previous: previousByTeamId.get(team.id) ?? null,
             existing: existing ?? null,
             current: teamData,
+            auditedCommissionerStatus: auditedDecision?.status ?? null,
           })
 
       if (decision.kind === 'OVERRIDDEN') overridden += 1
@@ -157,7 +182,19 @@ export async function syncSeasonEligibility(seasonId: string, actorUserId: strin
           leagueSnapshot: teamData.league,
           approvedAt: status === 'APPROVED' ? now : null,
         })
-      } else if (decision.kind !== 'OVERRIDDEN') {
+      } else if (decision.kind === 'OVERRIDDEN') {
+        if (existing.status !== status || existing.source !== decision.source) {
+          changedEligibilityUpdates.push(tx.seasonTeamEligibility.update({
+            where: { id: existing.id },
+            data: {
+              status,
+              source: decision.source,
+              approvedAt: status === 'APPROVED' ? existing.approvedAt ?? now : null,
+              approvedById: auditedDecision?.actorUserId ?? existing.approvedById,
+            },
+          }))
+        }
+      } else {
         const snapshotsChanged =
           existing.nameSnapshot !== decision.nameSnapshot ||
           existing.abbreviationSnapshot !== decision.abbreviationSnapshot ||
@@ -295,6 +332,7 @@ export async function setEligibilityStatus(input: {
       where: { id: eligibility.id },
       data: {
         status: input.status,
+        source: 'COMMISSIONER_OVERRIDE',
         approvedAt: input.status === 'APPROVED' ? new Date() : null,
         approvedById: input.actorUserId,
       },

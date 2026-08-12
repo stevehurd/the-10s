@@ -36,7 +36,8 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
   const [state, setState] = useState<State | null>(null)
   const [filter, setFilter] = useState('EXCEPTIONS')
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busyAction, setBusyAction] = useState<string | null>(null)
   const [lastSync, setLastSync] = useState<SyncSummary | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editConference, setEditConference] = useState('')
@@ -87,8 +88,9 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
   }, [collegeEntries, filter])
 
   async function sync() {
-    setBusy(true)
+    setBusyAction('sync')
     setError(null)
+    setNotice(null)
     try {
       const response = await fetch(`/api/seasons/${seasonId}/eligibility`, { method: 'POST' })
       const payload = await response.json()
@@ -98,15 +100,16 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
     } catch (syncError) {
       setError(syncError instanceof Error ? syncError.message : 'Unable to sync SportsDataIO')
     } finally {
-      setBusy(false)
+      setBusyAction(null)
     }
   }
 
-  async function setStatus(id: string, status: 'APPROVED' | 'INACTIVE') {
-    setBusy(true)
+  async function setStatus(entry: Eligibility, status: 'APPROVED' | 'INACTIVE') {
+    setBusyAction(`${entry.id}:${status}`)
     setError(null)
+    setNotice(null)
     try {
-      const response = await fetch(`/api/seasons/${seasonId}/eligibility/${id}`, {
+      const response = await fetch(`/api/seasons/${seasonId}/eligibility/${entry.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -114,10 +117,15 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Unable to update team eligibility')
       await load()
+      setNotice(
+        status === 'APPROVED'
+          ? `${entry.nameSnapshot} is now eligible.`
+          : `${entry.nameSnapshot} is now inactive.`,
+      )
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : 'Unable to update team eligibility')
     } finally {
-      setBusy(false)
+      setBusyAction(null)
     }
   }
 
@@ -129,8 +137,9 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
   }
 
   async function saveCorrection(entry: Eligibility) {
-    setBusy(true)
+    setBusyAction(`${entry.id}:OVERRIDE`)
     setError(null)
+    setNotice(null)
     try {
       const response = await fetch(`/api/seasons/${seasonId}/eligibility/${entry.id}`, {
         method: 'PATCH',
@@ -149,7 +158,7 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : 'Unable to save correction')
     } finally {
-      setBusy(false)
+      setBusyAction(null)
     }
   }
 
@@ -169,12 +178,13 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
               Sync the current SportsDataIO FBS hierarchy. Unchanged teams are approved automatically; only additions, removals, and changed details need attention.
             </p>
           </div>
-          <button className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white disabled:opacity-50" disabled={busy} onClick={() => void sync()} type="button">
-            {busy ? 'Syncing…' : 'Sync current FBS teams'}
+          <button className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white disabled:opacity-50" disabled={busyAction !== null} onClick={() => void sync()} type="button">
+            {busyAction === 'sync' ? 'Syncing…' : 'Sync current FBS teams'}
           </button>
         </header>
 
         {error ? <p className="mb-5 rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-3">{error}</p> : null}
+        {notice ? <p className="mb-5 rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-3 text-emerald-100">{notice}</p> : null}
         {lastSync ? (
           <section className="mb-5 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-5">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Sync complete</p>
@@ -228,12 +238,16 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
                   <p className="text-sm text-slate-400">{entry.reviewReason ?? 'Unchanged from the previous season'}</p>
                   <div className="flex flex-wrap justify-end gap-2">
                     {(entry.status === 'REVIEW' || entry.status === 'INACTIVE') ? (
-                      <button className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40" disabled={busy} onClick={() => void setStatus(entry.id, 'APPROVED')} type="button">Make eligible</button>
+                      <button className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40" disabled={busyAction !== null} onClick={() => void setStatus(entry, 'APPROVED')} type="button">
+                        {busyAction === `${entry.id}:APPROVED` ? 'Making eligible…' : 'Make eligible'}
+                      </button>
                     ) : null}
                     {entry.status !== 'INACTIVE' ? (
-                      <button className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 disabled:opacity-40" disabled={busy} onClick={() => void setStatus(entry.id, 'INACTIVE')} type="button">Inactive</button>
+                      <button className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 disabled:opacity-40" disabled={busyAction !== null} onClick={() => void setStatus(entry, 'INACTIVE')} type="button">
+                        {busyAction === `${entry.id}:INACTIVE` ? 'Updating…' : 'Inactive'}
+                      </button>
                     ) : null}
-                    <button className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 disabled:opacity-40" disabled={busy} onClick={() => beginCorrection(entry)} type="button">Correct details</button>
+                    <button className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 disabled:opacity-40" disabled={busyAction !== null} onClick={() => beginCorrection(entry)} type="button">Correct details</button>
                   </div>
                 </div>
 
@@ -255,8 +269,10 @@ export default function EligibilityReview({ seasonId }: { seasonId: string }) {
                       <input className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" maxLength={300} onChange={(event) => setEditNote(event.target.value)} placeholder="Official 2026 conference alignment" value={editNote} />
                     </label>
                     <div className="flex gap-2">
-                      <button className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40" disabled={busy} onClick={() => void saveCorrection(entry)} type="button">Save</button>
-                      <button className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold" disabled={busy} onClick={() => setEditingId(null)} type="button">Cancel</button>
+                      <button className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40" disabled={busyAction !== null} onClick={() => void saveCorrection(entry)} type="button">
+                        {busyAction === `${entry.id}:OVERRIDE` ? 'Saving…' : 'Save'}
+                      </button>
+                      <button className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold" disabled={busyAction !== null} onClick={() => setEditingId(null)} type="button">Cancel</button>
                     </div>
                   </div>
                 ) : null}

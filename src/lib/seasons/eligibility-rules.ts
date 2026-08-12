@@ -53,16 +53,19 @@ export function resolveCollegeEligibilitySync(input: {
   previous: EligibilitySnapshot | null
   existing: ExistingEligibility | null
   current: TeamSyncData
+  auditedCommissionerStatus?: 'APPROVED' | 'INACTIVE' | null
 }) {
   const { existing, current } = input
   if (
-    existing?.source === 'COMMISSIONER_OVERRIDE' &&
-    (existing.status === 'APPROVED' || existing.status === 'INACTIVE')
+    existing &&
+    ((existing.source === 'COMMISSIONER_OVERRIDE' &&
+      (existing.status === 'APPROVED' || existing.status === 'INACTIVE')) ||
+      input.auditedCommissionerStatus)
   ) {
     return {
       kind: 'OVERRIDDEN' as const,
-      status: existing.status,
-      source: existing.source,
+      status: input.auditedCommissionerStatus ?? existing.status,
+      source: 'COMMISSIONER_OVERRIDE',
       reviewReason: existing.reviewReason,
       nameSnapshot: existing.nameSnapshot,
       abbreviationSnapshot: existing.abbreviationSnapshot,

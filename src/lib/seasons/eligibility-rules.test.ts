@@ -57,7 +57,7 @@ test('commissioner corrections require a bounded conference and audit reason', (
   )
 })
 
-test('later provider syncs preserve a season-specific commissioner correction', () => {
+test('later provider syncs preserve a season-specific commissioner eligibility decision', () => {
   const decision = resolveCollegeEligibilitySync({
     previous: null,
     current,
@@ -75,5 +75,26 @@ test('later provider syncs preserve a season-specific commissioner correction', 
   assert.equal(decision.kind, 'OVERRIDDEN')
   assert.equal(decision.status, 'APPROVED')
   assert.equal(decision.conferenceSnapshot, 'Corrected Conference')
+  assert.equal(decision.source, 'COMMISSIONER_OVERRIDE')
+})
+
+test('the audit trail restores an older commissioner approval whose source was reset', () => {
+  const decision = resolveCollegeEligibilitySync({
+    previous: null,
+    current,
+    auditedCommissionerStatus: 'APPROVED',
+    existing: {
+      status: 'REVIEW',
+      source: 'SPORTSDATAIO',
+      reviewReason: 'New FBS team for this season',
+      nameSnapshot: current.name,
+      abbreviationSnapshot: current.abbreviation,
+      conferenceSnapshot: current.conference,
+      divisionSnapshot: current.division,
+    },
+  })
+
+  assert.equal(decision.kind, 'OVERRIDDEN')
+  assert.equal(decision.status, 'APPROVED')
   assert.equal(decision.source, 'COMMISSIONER_OVERRIDE')
 })
