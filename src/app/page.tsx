@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic'
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ season?: string; preview?: string; seeded?: string }>
+  searchParams: Promise<{ season?: string; preview?: string; keepers?: string; seeded?: string }>
 }) {
   const context = await getCurrentAppUser()
   if (!context) {
@@ -128,7 +128,7 @@ export default async function Home({
     (participant) => participant.userId === context.appUser.id,
   )
   const previewAllowed =
-    membership.role === 'COMMISSIONER' && membership.pool.slug === 'the-10s-development'
+    process.env.NODE_ENV === 'development' && membership.role === 'COMMISSIONER'
   const previewPhase = previewAllowed && ['preseason', 'active', 'complete'].includes(query.preview ?? '')
     ? query.preview
     : null
@@ -143,6 +143,9 @@ export default async function Home({
   const isComplete = displayedSeasonStatus === 'FINALIZED'
   const isInSeason = displayedSeasonStatus === 'ACTIVE'
   const showKeeperTracker = isPreseason
+  const keeperPreview = previewAllowed && isPreseason && ['unlocked', 'locked', 'revealed'].includes(query.keepers ?? '')
+    ? query.keepers
+    : null
   const keeperTracker = [...participants]
     .sort(
       (left, right) =>
@@ -150,27 +153,38 @@ export default async function Home({
           (right.baseDraftOrder ?? Number.MAX_SAFE_INTEGER) ||
         left.user.name.localeCompare(right.user.name),
     )
-    .map((participant) => ({
-      id: participant.id,
-      name: playerDisplayName(participant.user.name, participant.poolSeat.label),
-      playerName: participant.user.name,
-      hasNickname: Boolean(editableRosterNickname(participant.poolSeat.label)),
-      isViewer: participant.userId === context.appUser.id,
-      submitted: Boolean(participant.decisionsSubmittedAt),
-      locked: Boolean(participant.decisionsLockedAt),
-      keptTeams: participant.rosterSlots
-        .filter((slot) => slot.retentionChoice === 'KEEP' && slot.team)
-        .map((slot) => ({
-          id: slot.team!.id,
-          name: slot.team!.name,
-          abbreviation: slot.team!.abbreviation,
-          logoUrl: slot.team!.logoUrl,
-          league: slot.team!.league,
-          slot: slot.number,
-        })),
-    }))
+    .map((participant) => {
+      const isViewer = participant.userId === context.appUser.id
+      const previewLocked = keeperPreview === 'revealed' || (keeperPreview === 'locked' && isViewer)
+      const locked = keeperPreview ? previewLocked : Boolean(participant.decisionsLockedAt)
+      const submitted = keeperPreview
+        ? (keeperPreview !== 'unlocked' && isViewer) || keeperPreview === 'revealed'
+        : Boolean(participant.decisionsSubmittedAt)
+      return {
+        id: participant.id,
+        name: playerDisplayName(participant.user.name, participant.poolSeat.label),
+        playerName: participant.user.name,
+        hasNickname: Boolean(editableRosterNickname(participant.poolSeat.label)),
+        isViewer,
+        submitted,
+        locked,
+        keptTeams: participant.rosterSlots
+          .filter((slot) => slot.retentionChoice === 'KEEP' && slot.team)
+          .map((slot) => ({
+            id: slot.team!.id,
+            name: slot.team!.name,
+            abbreviation: slot.team!.abbreviation,
+            logoUrl: slot.team!.logoUrl,
+            league: slot.team!.league,
+            slot: slot.number,
+          })),
+      }
+    })
   const lockedKeeperCount = keeperTracker.filter((participant) => participant.locked).length
-  const keeperSelectionsRevealed = areKeeperSelectionsRevealed(participants)
+  const keeperSelectionsRevealed = keeperPreview
+    ? keeperPreview === 'revealed'
+    : areKeeperSelectionsRevealed(participants)
+  const displayedViewerKeeperState = keeperTracker.find((participant) => participant.isViewer)
   const rosterRecordByTeam = isPreseason ? priorRecordByTeam : recordByTeam
   const champion = isComplete ? standings[0] ?? null : null
   const championNickname = champion ? editableRosterNickname(champion.poolSeat.label) : null
@@ -228,9 +242,35 @@ export default async function Home({
                   )
                 })}
               </nav>
-              <form action="/api/admin/seed-dashboard-states" method="post">
-                <button className="rounded-lg border border-blue-500/30 px-3 py-2 text-sm font-bold text-blue-300 transition hover:bg-blue-500/10" type="submit">Seed stress-test seasons</button>
-              </form>
+              {isPreseason ? (
+                <nav aria-label="Preview keeper state" className="flex flex-wrap gap-2 border-l border-white/10 pl-2">
+                  {[
+                    { label: 'Actual keepers', value: null },
+                    { label: 'Not locked', value: 'unlocked' },
+                    { label: 'You locked', value: 'locked' },
+                    { label: 'All locked · Revealed', value: 'revealed' },
+                  ].map((option) => {
+                    const selected = keeperPreview === option.value
+                    const params = new URLSearchParams({ season: selectedSeason.id, preview: 'preseason' })
+                    if (option.value) params.set('keepers', option.value)
+                    return (
+                      <Link
+                        aria-current={selected ? 'page' : undefined}
+                        className={`rounded-lg px-3 py-2 text-sm font-bold transition ${selected ? 'bg-emerald-600 text-white' : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                        href={`/?${params.toString()}`}
+                        key={option.label}
+                      >
+                        {option.label}
+                      </Link>
+                    )
+                  })}
+                </nav>
+              ) : null}
+              {membership.pool.slug === 'the-10s-development' ? (
+                <form action="/api/admin/seed-dashboard-states" method="post">
+                  <button className="rounded-lg border border-blue-500/30 px-3 py-2 text-sm font-bold text-blue-300 transition hover:bg-blue-500/10" type="submit">Seed stress-test seasons</button>
+                </form>
+              ) : null}
               </div>
             </div>
           </section>
@@ -278,9 +318,9 @@ export default async function Home({
         {isPreseason && viewerParticipant ? (
           <section className="mb-6">
             <KeeperStatusCallout
-              locked={Boolean(viewerParticipant.decisionsLockedAt)}
+              locked={displayedViewerKeeperState?.locked ?? Boolean(viewerParticipant.decisionsLockedAt)}
               seasonId={selectedSeason.id}
-              submitted={Boolean(viewerParticipant.decisionsSubmittedAt)}
+              submitted={displayedViewerKeeperState?.submitted ?? Boolean(viewerParticipant.decisionsSubmittedAt)}
             />
           </section>
         ) : null}
