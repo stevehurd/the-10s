@@ -91,6 +91,7 @@ export default async function Home({
       ? prisma.teamSeasonRecord.findMany({ where: { seasonId: selectedSeason.previousSeasonId } })
       : [],
   ])
+  const officialOrderType = officialDraft?.orderType === 'LINEAR' ? 'LINEAR' : 'SNAKE'
   const recordByTeam = new Map(records.map((record) => [record.teamId, record]))
   const priorRecordByTeam = new Map(priorRecords.map((record) => [record.teamId, record]))
   const standings = participants
@@ -282,7 +283,7 @@ export default async function Home({
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-300">Draft headquarters</p>
                 <h3 className="mt-3 text-2xl font-black sm:text-3xl">Get ready for the {selectedSeason.year} draft</h3>
-                <p className="mt-3 max-w-2xl text-slate-300">Finalize keepers, review the snake order, and build a shortlist from the best available NFL and college teams.</p>
+                <p className="mt-3 max-w-2xl text-slate-300">Finalize keepers, review the {officialOrderType === 'LINEAR' ? 'linear' : 'snake'} order, and build a shortlist from the best available NFL and college teams.</p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link className="w-full rounded-xl bg-blue-600 px-5 py-3 text-center font-black text-white sm:w-auto" href={`/seasons/${selectedSeason.id}/prep`}>Open draft preparation</Link>
                 </div>
@@ -327,7 +328,7 @@ export default async function Home({
 
         {isPreseason ? (
           <section className="mb-7 rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><h3 className="text-lg font-semibold">Round-one draft order</h3><p className="text-sm text-slate-400">Last place from last season picks first; round two reverses the order.</p></div><span className="text-xs font-bold uppercase tracking-wider text-slate-500">Snake draft</span></div>
+            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><h3 className="text-lg font-semibold">Round-one draft order</h3><p className="text-sm text-slate-400">Last place from last season picks first; {officialOrderType === 'LINEAR' ? 'the order stays the same in every round.' : 'round two reverses the order.'}</p></div><span className="text-xs font-bold uppercase tracking-wider text-slate-500">{officialOrderType === 'LINEAR' ? 'Linear draft' : 'Snake draft'}</span></div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {keeperTracker.map((participant, index) => <div className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${participant.isViewer ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-slate-950/30'}`} key={participant.id}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-sm font-black">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate font-semibold">{participant.name}{participant.isViewer ? ' · You' : ''}</p>{participant.hasNickname ? <p className="truncate text-xs text-slate-500">{participant.playerName}</p> : null}</div><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${participant.locked ? 'bg-emerald-300/15 text-emerald-200' : 'bg-amber-300/15 text-amber-200'}`}>{participant.locked ? 'Keepers locked' : 'Not locked'}</span></div>)}
             </div>

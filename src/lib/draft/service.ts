@@ -16,11 +16,13 @@ import {
   canActorMakeDraftSelection,
   canSelectLeague,
   generateDraftTurns,
+  isDraftOrderType,
   planLastPickUndo,
   seasonStatusForDraftSession,
   selectAutopick,
   shouldRunServerAutopick,
   type DraftSeat,
+  type DraftOrderType,
   type DraftTeam,
   type League,
   type RosterSlot as EngineRosterSlot,
@@ -42,10 +44,16 @@ interface CreateDraftSessionInput {
   seasonId: string
   name: string
   mode: 'OFFICIAL' | 'REHEARSAL'
+  orderType: unknown
   pickSeconds: number
   startsAt?: Date | null
   meetingUrl?: string | null
   actorUserId: string
+}
+
+function parseDraftOrderType(value: unknown): DraftOrderType {
+  if (isDraftOrderType(value)) return value
+  throw new DraftRuleError('Draft order type must be SNAKE or LINEAR', 'INVALID_ORDER_TYPE')
 }
 
 interface MakeSelectionInput {
@@ -158,6 +166,7 @@ export async function createDraftSession(input: CreateDraftSessionInput) {
     throw new DraftRuleError('Pick clock must be between 10 and 900 seconds', 'INVALID_CLOCK')
   }
   const meetingUrl = normalizeMeetingUrl(input.meetingUrl)
+  const orderType = parseDraftOrderType(input.orderType)
   validateDraftLogistics(input.startsAt ?? null, meetingUrl)
   if (input.mode === 'OFFICIAL' && !input.startsAt) {
     throw new DraftRuleError('Set the official draft date and time', 'START_TIME_REQUIRED')
@@ -233,7 +242,7 @@ export async function createDraftSession(input: CreateDraftSessionInput) {
     })),
   }))
   const generatedTurns = input.mode === 'REHEARSAL'
-    ? generateDraftTurns(buildDraftSeats(rehearsalParticipants))
+    ? generateDraftTurns(buildDraftSeats(rehearsalParticipants), orderType)
     : []
 
   return prisma.$transaction(async (tx) => {
@@ -242,6 +251,7 @@ export async function createDraftSession(input: CreateDraftSessionInput) {
         seasonId: input.seasonId,
         name: input.name.trim(),
         mode: input.mode,
+        orderType,
         pickSeconds: input.pickSeconds,
         startsAt: input.startsAt ?? null,
         meetingUrl,
@@ -297,6 +307,7 @@ export async function createDraftSession(input: CreateDraftSessionInput) {
         entityId: session.id,
         data: {
           mode: input.mode,
+          orderType,
           pickSeconds: input.pickSeconds,
           startsAt: input.startsAt?.toISOString() ?? null,
           hasMeetingUrl: Boolean(meetingUrl),
@@ -309,29 +320,38 @@ export async function createDraftSession(input: CreateDraftSessionInput) {
   })
 }
 
-export async function updateDraftLogistics(input: {
+export async function updateDraftSettings(input: {
   sessionId: string
   startsAt: Date | null
   meetingUrl: string | null
   pickSeconds: number
+  orderType: unknown
   actorUserId: string
 }) {
   if (!Number.isInteger(input.pickSeconds) || input.pickSeconds < 10 || input.pickSeconds > 900) {
     throw new DraftRuleError('Pick clock must be between 10 and 900 seconds', 'INVALID_CLOCK')
   }
   const meetingUrl = normalizeMeetingUrl(input.meetingUrl)
+  const orderType = parseDraftOrderType(input.orderType)
   validateDraftLogistics(input.startsAt, meetingUrl)
 
   const session = await prisma.draftSession.findUnique({
     where: { id: input.sessionId },
-    include: { season: true },
+    include: { season: true, _count: { select: { turns: true } } },
   })
   if (!session) throw new DraftRuleError('Draft session not found', 'NOT_FOUND', 404)
   if (session.status !== 'SCHEDULED') {
-    throw new DraftRuleError('Draft logistics lock when the draft starts', 'INVALID_STATUS', 409)
+    throw new DraftRuleError('Draft settings lock when the draft starts', 'INVALID_STATUS', 409)
   }
   if (session.mode === 'OFFICIAL' && !input.startsAt) {
     throw new DraftRuleError('The official draft must have a start time', 'START_TIME_REQUIRED')
+  }
+  if (orderType !== session.orderType && session._count.turns > 0) {
+    throw new DraftRuleError(
+      'Draft order type cannot change after turns are generated',
+      'ORDER_TYPE_LOCKED',
+      409,
+    )
   }
   if (!session.season.poolId) {
     throw new DraftRuleError('Season is not assigned to a pool', 'MISSING_POOL')
@@ -344,6 +364,7 @@ export async function updateDraftLogistics(input: {
         startsAt: input.startsAt,
         meetingUrl,
         pickSeconds: input.pickSeconds,
+        orderType,
       },
     })
     await tx.auditEvent.create({
@@ -352,13 +373,15 @@ export async function updateDraftLogistics(input: {
         seasonId: session.seasonId,
         draftSessionId: session.id,
         actorUserId: input.actorUserId,
-        action: 'DRAFT_LOGISTICS_UPDATED',
+        action: 'DRAFT_SETTINGS_UPDATED',
         entityType: 'DraftSession',
         entityId: session.id,
         data: {
           startsAt: input.startsAt?.toISOString() ?? null,
           hasMeetingUrl: Boolean(meetingUrl),
           pickSeconds: input.pickSeconds,
+          previousOrderType: session.orderType,
+          orderType,
         },
       },
     })
@@ -413,7 +436,10 @@ export async function startDraftSession(sessionId: string, actorUserId: string) 
           'ELIGIBILITY_REVIEW_INCOMPLETE',
         )
       }
-      const generatedTurns = generateDraftTurns(seats)
+      const generatedTurns = generateDraftTurns(
+        seats,
+        parseDraftOrderType(session.orderType),
+      )
       if (generatedTurns.length > 0) {
         await tx.draftTurn.createMany({
           data: generatedTurns.map((turn) => {
@@ -1321,6 +1347,7 @@ export async function getDraftRoomState(draftSessionId: string, viewerUserId: st
       id: session.id,
       name: session.name,
       mode: session.mode,
+      orderType: session.orderType,
       status: session.status,
       pickSeconds: session.pickSeconds,
       startsAt: session.startsAt,
