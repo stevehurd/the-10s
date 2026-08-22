@@ -1,3 +1,13 @@
+const DRAFT_TIME_ZONE = 'America/Denver'
+
+export function formatDraftStartTime(value: Date | string) {
+  return new Date(value).toLocaleString('en-US', {
+    dateStyle: 'full',
+    timeStyle: 'short',
+    timeZone: DRAFT_TIME_ZONE,
+  })
+}
+
 export function normalizeMeetingUrl(value: string | null | undefined) {
   const trimmed = value?.trim()
   if (!trimmed) return null

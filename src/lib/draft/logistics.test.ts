@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { normalizeMeetingUrl } from './logistics.ts'
+import { formatDraftStartTime, normalizeMeetingUrl } from './logistics.ts'
+
+test('formats draft start times in the Denver timezone', () => {
+  assert.equal(
+    formatDraftStartTime('2026-08-26T01:00:00.000Z'),
+    'Tuesday, August 25, 2026 at 7:00 PM',
+  )
+})
 
 test('adds HTTPS to a pasted meeting link without a protocol', () => {
   assert.equal(normalizeMeetingUrl('meet.google.com/abc-defg-hij'), 'https://meet.google.com/abc-defg-hij')

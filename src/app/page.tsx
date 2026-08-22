@@ -7,6 +7,7 @@ import SeasonSelector from '@/components/season-selector'
 import TeamMark from '@/components/team-mark'
 import { getCurrentAppUser } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
+import { formatDraftStartTime } from '@/lib/draft/logistics'
 import { editableRosterNickname, playerDisplayName } from '@/lib/player-settings-rules'
 import { areKeeperSelectionsRevealed } from '@/lib/seasons/keeper-visibility'
 import { compareStandings } from '@/lib/standings-ranking'
@@ -292,7 +293,7 @@ export default async function Home({
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Official draft</p>
                 {officialDraft ? (
                   <>
-                    {officialDraft.startsAt ? <p className="mt-2 text-lg font-bold">{officialDraft.startsAt.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</p> : null}
+                    {officialDraft.startsAt ? <p className="mt-2 text-lg font-bold">{formatDraftStartTime(officialDraft.startsAt)}</p> : null}
                     <DraftCountdown draftHref={`/draft/${officialDraft.id}`} meetingUrl={officialDraft.meetingUrl} startsAt={officialDraft.startsAt?.toISOString() ?? null} status={officialDraft.status} />
                   </>
                 ) : (
