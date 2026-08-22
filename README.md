@@ -3,7 +3,8 @@
 League House is a private football pool for drafting NFL and FBS college teams,
 tracking their wins through the season, and preserving league history from year
 to year. It includes passwordless authentication, keeper decisions, a live
-snake draft, commissioner tools, season standings, and historical rosters.
+configurable snake or linear drafts, commissioner tools, season standings, and
+historical rosters.
 
 - Production: [league-house.com](https://league-house.com)
 - Staging: [staging.league-house.com](https://staging.league-house.com)
@@ -20,8 +21,9 @@ Before the next draft, returning participants choose which teams to **Keep** or
 a commissioner records an override. A keeper remains in the same numbered
 roster slot; a release opens that slot in the corresponding draft round.
 
-Draft order begins with the previous season's last-place participant and snakes
-each round. Participants with a keeper in a round are skipped. The live draft
+Draft order begins with the previous season's last-place participant. A snake
+draft reverses the order each round; a linear draft keeps the same order every
+round. Participants with a keeper in a round are skipped. The live draft
 supports commissioner controls, pick clocks, queued teams, deterministic
 autopicks, rehearsal drafts, and concurrent-pick protection.
 
@@ -174,7 +176,7 @@ Do not use `prisma db push` against a shared or production database. Do not use
 and the original 2025 source records must be preserved.
 
 Changes to the draft engine require deterministic coverage for keeper skipping,
-snake order, roster quotas, autopick, ties, and simultaneous-pick protection.
+snake and linear order, roster quotas, autopick, ties, and simultaneous-pick protection.
 Sports-data changes require fixture-based NFL and college regression tests.
 Authorization changes require anonymous, member, and commissioner tests.
 

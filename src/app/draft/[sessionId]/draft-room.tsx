@@ -57,6 +57,7 @@ export interface DraftState {
     id: string
     name: string
     mode: string
+    orderType: string
     status: string
     pickSeconds: number
     startsAt: string | null
@@ -572,7 +573,7 @@ export default function DraftRoom({
           <div className="flex items-center gap-3">
             <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">
-              {state.session.season.name} · Round {round}
+              {state.session.season.name} · Round {round} · {state.session.orderType === 'LINEAR' ? 'Linear' : 'Snake'} draft
             </p>
             <h1 className="mt-1 text-xl font-semibold">{state.session.name}</h1>
             </div>
