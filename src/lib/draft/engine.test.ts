@@ -4,7 +4,9 @@ import test from 'node:test'
 import {
   canActorMakeDraftSelection,
   canSelectLeague,
+  DRAFT_ORDER_TYPES,
   generateDraftTurns,
+  isDraftOrderType,
   LEAGUES,
   planLastPickUndo,
   rankAutopickCandidates,
@@ -14,6 +16,7 @@ import {
   shouldRunServerAutopick,
   validateReleaseMinimums,
   type DraftSeat,
+  type DraftOrderType,
   type DraftTeam,
   type League,
   type RosterSlot,
@@ -132,6 +135,39 @@ test('snakes each round and skips seats whose same-numbered slot is kept', () =>
   )
 })
 
+test('keeps the same seat order each linear round while skipping keepers', () => {
+  const turns = generateDraftTurns(
+    [
+      seat('last-place', 1, [2]),
+      seat('middle', 2, [1, 3]),
+      seat('first-place', 3, [3]),
+    ],
+    DRAFT_ORDER_TYPES.LINEAR,
+  )
+
+  assert.deepEqual(
+    turns.filter((turn) => turn.round <= 3).map((turn) => [turn.round, turn.seatId]),
+    [
+      [1, 'last-place'],
+      [1, 'first-place'],
+      [2, 'middle'],
+      [2, 'first-place'],
+      [3, 'last-place'],
+    ],
+  )
+})
+
+test('recognizes only supported draft order types', () => {
+  assert.equal(isDraftOrderType('SNAKE'), true)
+  assert.equal(isDraftOrderType('LINEAR'), true)
+  assert.equal(isDraftOrderType('ROUND_ROBIN'), false)
+  assert.equal(isDraftOrderType(null), false)
+  assert.throws(
+    () => generateDraftTurns([seat('only-seat', 1)], 'ROUND_ROBIN' as DraftOrderType),
+    /Unsupported draft order type/,
+  )
+})
+
 test('validates the minimum one NFL and two college releases', () => {
   const roster = [
     rosterSlot(1, 'KEEPER', LEAGUES.NFL),
@@ -190,6 +226,15 @@ test('generates every turn for a fifteen-seat draft without keepers', () => {
     turns.slice(15, 30).map((turn) => turn.seatId),
     [...seats].reverse().map((draftSeat) => draftSeat.id),
   )
+})
+
+test('generates every linear turn for a fifteen-seat draft without reversing', () => {
+  const seats = Array.from({ length: 15 }, (_, index) => seat(`seat-${index + 1}`, index + 1))
+  const turns = generateDraftTurns(seats, DRAFT_ORDER_TYPES.LINEAR)
+
+  assert.equal(turns.length, 150)
+  assert.deepEqual(turns.slice(0, 15).map((turn) => turn.seatId), seats.map((draftSeat) => draftSeat.id))
+  assert.deepEqual(turns.slice(15, 30).map((turn) => turn.seatId), seats.map((draftSeat) => draftSeat.id))
 })
 
 test('undo rewinds the last selected turn and demotes the following active turn', () => {

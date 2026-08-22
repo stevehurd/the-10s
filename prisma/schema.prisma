@@ -296,6 +296,7 @@ model DraftSession {
   seasonId         String    @map("season_id")
   name             String
   mode             String    @default("OFFICIAL")
+  orderType        String    @default("SNAKE") @map("order_type")
   status           String    @default("SCHEDULED")
   pickSeconds      Int       @default(90) @map("pick_seconds")
   startsAt         DateTime? @map("starts_at")

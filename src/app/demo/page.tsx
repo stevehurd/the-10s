@@ -116,6 +116,7 @@ function createDemoState(): DraftState {
       id: 'local-demo',
       name: '2026 Draft Rehearsal',
       mode: 'REHEARSAL',
+      orderType: 'SNAKE',
       status: 'LIVE',
       pickSeconds: 90,
       startsAt: null,

@@ -8,7 +8,7 @@ These instructions apply to every AI agent and automated coding tool working in 
 - A kept team remains in the same numbered slot in the following season.
 - Releasing a team opens that numbered slot for the corresponding draft round.
 - Returning participants must release at least 1 NFL team and 2 college teams unless a commissioner records an override.
-- Draft order starts with the previous season's lowest-ranked pool seat and snakes each round. Participants with a keeper in a round are skipped.
+- Draft order starts with the previous season's lowest-ranked pool seat and follows the configured format: snake reverses the order each round, while linear keeps the same order each round. Participants with a keeper in a round are skipped.
 - Completed-season standings and rosters are immutable unless a commissioner explicitly reopens the season and the change is audited.
 - NFL regular-season and postseason wins count. College regular-season, conference championship, bowl, and playoff wins count. Ties are recorded but do not count as wins.
 - SportsDataIO remains the operational source for NFL and FBS team/standings data. Refactors must preserve the characterized scoring results.
@@ -35,7 +35,7 @@ These instructions apply to every AI agent and automated coding tool working in 
 ## Verification gates
 
 - Run lint, type checking, and relevant tests before handing off changes.
-- Draft-engine changes require deterministic unit tests, including keeper skipping, snake order, roster quotas, autopick, ties, and simultaneous-pick protection.
+- Draft-engine changes require deterministic unit tests, including keeper skipping, snake and linear order, roster quotas, autopick, ties, and simultaneous-pick protection.
 - Sports-data changes require fixture-based regression tests for both NFL and college totals.
 - Authorization changes require anonymous/member/commissioner access tests.
 - Do not weaken, skip, or delete a failing safety test merely to make a build pass.

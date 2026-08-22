@@ -32,6 +32,7 @@ export default async function DraftAdminPage() {
           id: true,
           name: true,
           mode: true,
+          orderType: true,
           status: true,
           pickSeconds: true,
           startsAt: true,

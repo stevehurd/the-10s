@@ -12,6 +12,7 @@ interface SessionSummary {
   id: string
   name: string
   mode: string
+  orderType: string
   status: string
   pickSeconds: number
   startsAt: string | null
@@ -20,6 +21,12 @@ interface SessionSummary {
   createdAt: string
   turnCount: number
   selectionCount: number
+}
+
+type DraftOrderType = 'SNAKE' | 'LINEAR'
+
+function orderTypeLabel(orderType: string) {
+  return orderType === 'LINEAR' ? 'Linear' : 'Snake'
 }
 
 interface SeasonSummary {
@@ -44,6 +51,8 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
   const [seasonId, setSeasonId] = useState(seasons[0]?.id ?? '')
   const [officialPickSeconds, setOfficialPickSeconds] = useState(90)
   const [demoPickSeconds, setDemoPickSeconds] = useState(90)
+  const [officialOrderType, setOfficialOrderType] = useState<DraftOrderType>('SNAKE')
+  const [demoOrderType, setDemoOrderType] = useState<DraftOrderType>('SNAKE')
   const [draftStartsAt, setDraftStartsAt] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
@@ -75,12 +84,14 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
     setBusy(`create-${mode}`)
     setMessage(null)
     const pickSeconds = mode === 'OFFICIAL' ? officialPickSeconds : demoPickSeconds
+    const orderType = mode === 'OFFICIAL' ? officialOrderType : demoOrderType
     const response = await fetch('/api/draft-sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         seasonId: season.id,
         mode,
+        orderType,
         pickSeconds,
         startsAt: mode === 'OFFICIAL' && draftStartsAt ? new Date(draftStartsAt).toISOString() : null,
         meetingUrl: mode === 'OFFICIAL' ? meetingUrl : null,
@@ -223,6 +234,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="text-sm font-semibold">Draft date and time<input className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5" type="datetime-local" value={draftStartsAt} onInput={(event) => setDraftStartsAt(event.currentTarget.value)} /></label>
                   <label className="text-sm font-semibold">Video call link (optional)<input autoCapitalize="none" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5" inputMode="url" placeholder="meet.google.com/..." spellCheck={false} type="url" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} onBlur={(event) => setMeetingUrl(normalizeMeetingUrl(event.target.value) ?? '')} /><span className="mt-1 block text-xs font-normal text-slate-500">https:// is added automatically.</span></label>
+                  <label className="text-sm font-semibold">Draft order type<select className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-900 px-3 py-2.5" value={officialOrderType} onChange={(event) => setOfficialOrderType(event.target.value as DraftOrderType)}><option value="SNAKE">Snake — reverse each round</option><option value="LINEAR">Linear — same order each round</option></select></label>
                   <label className="text-sm font-semibold md:max-w-[180px]">Pick clock (seconds)<input className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5" max={900} min={10} type="number" value={officialPickSeconds} onChange={(event) => setOfficialPickSeconds(Number(event.target.value))} /></label>
                 </div>
               )}
@@ -238,7 +250,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
                       <Badge>{officialSession.status}</Badge>
                     </div>
                     <p className="mt-1 text-sm text-slate-600">
-                      {officialSession.selectionCount}/{officialSession.turnCount} picks · {officialSession.pickSeconds}s clock
+                      {officialSession.selectionCount}/{officialSession.turnCount} picks · {orderTypeLabel(officialSession.orderType)} order · {officialSession.pickSeconds}s clock
                     </p>
                     <p className="mt-1 text-sm text-slate-500">{officialSession.startsAt ? new Date(officialSession.startsAt).toLocaleString() : 'Draft time not scheduled'}{officialSession.meetingUrl ? ' · Video call configured' : ''}</p>
                   </div>
@@ -285,6 +297,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
             </div>
             <div className="flex flex-wrap items-end gap-3">
               <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Demo pick clock<input className="mt-1 block w-36 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" max={900} min={10} type="number" value={demoPickSeconds} onChange={(event) => setDemoPickSeconds(Number(event.target.value))} /></label>
+              <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Draft order<select className="mt-1 block w-44 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" value={demoOrderType} onChange={(event) => setDemoOrderType(event.target.value as DraftOrderType)}><option value="SNAKE">Snake</option><option value="LINEAR">Linear</option></select></label>
               <button className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={season.participantCount === 0 || busy !== null} onClick={() => createSession('REHEARSAL')}>
                 {busy === 'create-REHEARSAL' ? 'Seeding demo…' : 'Create randomized demo'}
               </button>
@@ -296,7 +309,7 @@ export default function DraftManager({ seasons }: { seasons: SeasonSummary[] }) 
             {demoSessions.map((session) => (
               <article key={session.id} className="rounded-2xl border border-white/10 bg-slate-900 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">{session.name}</h3><Badge>{session.status}</Badge></div><p className="mt-1 text-sm text-slate-600">{session.selectionCount}/{session.turnCount} picks · {session.pickSeconds}s clock</p></div>
+                  <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">{session.name}</h3><Badge>{session.status}</Badge><Badge>{orderTypeLabel(session.orderType)}</Badge></div><p className="mt-1 text-sm text-slate-600">{session.selectionCount}/{session.turnCount} picks · {session.pickSeconds}s clock</p></div>
                   <div className="flex flex-wrap gap-2">
                     <Link href={`/draft/${session.id}`} className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white">Open demo</Link>
                     {session.status === 'SCHEDULED' ? <ActionButton disabled={busy !== null} onClick={() => control(session.id, 'START')}>Start</ActionButton> : null}
@@ -340,6 +353,9 @@ function ScheduleEditor({ session }: { session: SessionSummary }) {
   const [startsAt, setStartsAt] = useState(localDateTimeValue(session.startsAt))
   const [meetingUrl, setMeetingUrl] = useState(session.meetingUrl ?? '')
   const [pickSeconds, setPickSeconds] = useState(session.pickSeconds)
+  const [orderType, setOrderType] = useState<DraftOrderType>(
+    session.orderType === 'LINEAR' ? 'LINEAR' : 'SNAKE',
+  )
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -353,23 +369,25 @@ function ScheduleEditor({ session }: { session: SessionSummary }) {
         startsAt: startsAt ? new Date(startsAt).toISOString() : null,
         meetingUrl,
         pickSeconds,
+        orderType,
       }),
     })
     if (!response.ok) setMessage(await responseMessage(response))
     else {
-      setMessage('Draft logistics saved. The preseason dashboard now shows this schedule.')
+      setMessage('Draft settings saved. The preseason dashboard now shows this schedule and order type.')
       router.refresh()
     }
     setSaving(false)
   }
 
   return (
-    <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 md:grid-cols-[1fr_1fr_130px_auto] md:items-end">
+    <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 md:grid-cols-[1fr_1fr_150px_130px_auto] md:items-end">
       <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Start time<input className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" type="datetime-local" value={startsAt} onInput={(event) => setStartsAt(event.currentTarget.value)} /></label>
       <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Video call URL<input autoCapitalize="none" className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" inputMode="url" placeholder="https://..." spellCheck={false} type="url" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} onBlur={(event) => setMeetingUrl(normalizeMeetingUrl(event.target.value) ?? '')} /><span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-slate-500">https:// is added automatically.</span></label>
+      <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Draft order<select className="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" value={orderType} onChange={(event) => setOrderType(event.target.value as DraftOrderType)}><option value="SNAKE">Snake</option><option value="LINEAR">Linear</option></select></label>
       <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Pick seconds<input className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium normal-case tracking-normal text-slate-100" max={900} min={10} type="number" value={pickSeconds} onChange={(event) => setPickSeconds(Number(event.target.value))} /></label>
-      <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={saving || !startsAt} onClick={save}>{saving ? 'Saving…' : 'Save logistics'}</button>
-      {message ? <p className="text-sm text-slate-600 md:col-span-4">{message}</p> : null}
+      <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={saving || !startsAt} onClick={save}>{saving ? 'Saving…' : 'Save settings'}</button>
+      {message ? <p className="text-sm text-slate-600 md:col-span-5">{message}</p> : null}
     </div>
   )
 }

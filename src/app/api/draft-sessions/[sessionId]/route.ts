@@ -4,7 +4,7 @@ import { authorizeApi } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
 import { draftErrorResponse } from '@/lib/draft/http'
 import { canMemberEnterDraftRoom } from '@/lib/draft/lifecycle'
-import { getDraftRoomState, updateDraftLogistics } from '@/lib/draft/service'
+import { getDraftRoomState, updateDraftSettings } from '@/lib/draft/service'
 
 export async function GET(
   _request: Request,
@@ -59,11 +59,12 @@ export async function PATCH(
     const meetingUrl = typeof body.meetingUrl === 'string' && body.meetingUrl.trim()
       ? body.meetingUrl.trim()
       : null
-    const updated = await updateDraftLogistics({
+    const updated = await updateDraftSettings({
       sessionId,
       startsAt,
       meetingUrl,
       pickSeconds: Number(body.pickSeconds ?? session.pickSeconds),
+      orderType: body.orderType === undefined ? session.orderType : body.orderType,
       actorUserId: authorization.appUser.id,
     })
     revalidatePath('/')

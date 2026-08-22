@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { authorizeApi } from '@/lib/auth/authorization'
 import { prisma } from '@/lib/db'
 import { draftErrorResponse } from '@/lib/draft/http'
+import { DRAFT_ORDER_TYPES } from '@/lib/draft/engine'
 import { createDraftSession } from '@/lib/draft/service'
 
 export async function POST(request: Request) {
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
             ? 'Draft rehearsal'
             : `${season.year} Draft`,
       mode,
+      orderType: body.orderType === undefined ? DRAFT_ORDER_TYPES.SNAKE : body.orderType,
       pickSeconds: Number(body.pickSeconds ?? 90),
       startsAt,
       meetingUrl,

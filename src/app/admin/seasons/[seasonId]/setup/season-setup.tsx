@@ -94,7 +94,7 @@ export default function SeasonSetup({ seasonId, participants: initialParticipant
 
       <section className="rounded-2xl border border-white/10 bg-slate-900 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-xl font-bold">Base draft order</h2><p className="text-sm text-slate-600">Position 1 picks first in round one; the order snakes each round.</p></div>
+          <div><h2 className="text-xl font-bold">Base draft order</h2><p className="text-sm text-slate-600">Position 1 picks first in round one; draft management controls whether later rounds snake or stay linear.</p></div>
           <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={draftConfigured || busy !== null} onClick={saveOrder}>Save order</button>
         </div>
         <div className="mt-5 space-y-3">

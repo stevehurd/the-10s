@@ -50,6 +50,7 @@ if (!process.env.DIRECT_URL) {
         legacyTablesPresent: ['users', 'teams', 'seasons', 'drafts'].every((name) => tableNames.has(name)),
         expansionTablesPresent: ['pools', 'season_participants', 'roster_slots'].every((name) => tableNames.has(name)),
         meetingUrlColumnExists: columnNames.has('draft_sessions.meeting_url'),
+        draftOrderTypeColumnExists: columnNames.has('draft_sessions.order_type'),
         authUserIdColumnExists: columnNames.has('users.auth_user_id'),
       },
       tableCounts,

@@ -7,6 +7,17 @@ export type League = (typeof LEAGUES)[keyof typeof LEAGUES]
 
 export const ROSTER_SIZE = 10
 
+export const DRAFT_ORDER_TYPES = {
+  SNAKE: 'SNAKE',
+  LINEAR: 'LINEAR',
+} as const
+
+export type DraftOrderType = (typeof DRAFT_ORDER_TYPES)[keyof typeof DRAFT_ORDER_TYPES]
+
+export function isDraftOrderType(value: unknown): value is DraftOrderType {
+  return value === DRAFT_ORDER_TYPES.SNAKE || value === DRAFT_ORDER_TYPES.LINEAR
+}
+
 export const ROSTER_LIMITS: Readonly<Record<League, number>> = {
   NFL: 2,
   COLLEGE: 8,
@@ -144,7 +155,13 @@ export function seedDraftOrder(standings: StandingSeed[]): StandingSeed[] {
   })
 }
 
-export function generateDraftTurns(seats: DraftSeat[]): DraftTurn[] {
+export function generateDraftTurns(
+  seats: DraftSeat[],
+  orderType: DraftOrderType = DRAFT_ORDER_TYPES.SNAKE,
+): DraftTurn[] {
+  if (!isDraftOrderType(orderType)) {
+    throw new Error(`Unsupported draft order type: ${String(orderType)}`)
+  }
   if (seats.length === 0) return []
 
   const baseOrderValues = new Set(seats.map((seat) => seat.baseOrder))
@@ -161,7 +178,10 @@ export function generateDraftTurns(seats: DraftSeat[]): DraftTurn[] {
   const turns: DraftTurn[] = []
 
   for (let round = 1; round <= ROSTER_SIZE; round += 1) {
-    const roundSeats = round % 2 === 1 ? orderedSeats : [...orderedSeats].reverse()
+    const roundSeats =
+      orderType === DRAFT_ORDER_TYPES.SNAKE && round % 2 === 0
+        ? [...orderedSeats].reverse()
+        : orderedSeats
     let orderInRound = 0
 
     for (const seat of roundSeats) {
