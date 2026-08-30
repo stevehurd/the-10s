@@ -1,7 +1,13 @@
 import {
   type CombinedStanding,
+  expandCollegeStandingsToCatalog,
   validateAndCombineCollegeStandings,
+  validateCollegeHierarchyRollover,
 } from './standings-calculation.ts'
+import {
+  SEASON_SCOPED_COLLEGE_SOURCE,
+  VERIFIED_HIERARCHY_COLLEGE_SOURCE,
+} from './standings-record-source.ts'
 
 // SportsData.IO API integration
 const SPORTSDATA_API_KEY = process.env.SPORTSDATA_API_KEY
@@ -68,6 +74,17 @@ export interface SportsDataStanding {
   GlobalTeamID: number
   ConferenceRank?: number
   DivisionRank?: number
+}
+
+export type CollegeStandingsSnapshot = {
+  standings: CombinedStanding[]
+  source: typeof SEASON_SCOPED_COLLEGE_SOURCE | typeof VERIFIED_HIERARCHY_COLLEGE_SOURCE
+}
+
+class SportsDataHttpError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message)
+  }
 }
 
 // NFL Standings API calls
@@ -137,43 +154,100 @@ export async function fetchNFLPostseasonStandings(season: number = 2025): Promis
   return standings as SportsDataStanding[]
 }
 
-// College Football Team Season Stats & Standings API calls
-export async function fetchCollegeStandings(season: number = 2025): Promise<CombinedStanding[]> {
+// College Football Team Season Stats & Standings API calls. Unlike
+// LeagueHierarchy, these rows identify the season that their W-L totals belong
+// to. Never synthesize that season locally: validation must reject a stale or
+// partially rolled-over provider response before it can reach the database.
+export async function fetchCollegeStandings(season: number = 2025): Promise<CollegeStandingsSnapshot> {
   if (!SPORTSDATA_API_KEY) {
     throw new Error('SportsData.IO API key not configured')
   }
 
-  console.log(`Fetching college ${season} aggregate standings from SportsDataIO...`)
-  const conferences = await fetchSportsDataJson<Array<{ Teams?: SportsDataTeam[] }>>(
-    '/cfb/scores/json/LeagueHierarchy',
-    'college hierarchy',
-  )
+  console.log(`Fetching college ${season} season-scoped standings from SportsDataIO...`)
+  try {
+    const [regular, postseason] = await Promise.all([
+      fetchSportsDataJson<SportsDataStanding[]>(
+        `/cfb/scores/json/TeamSeasonStats/${season}`,
+        `college ${season} regular-season standings`,
+      ),
+      fetchSportsDataJson<SportsDataStanding[]>(
+        `/cfb/scores/json/TeamSeasonStats/${season}POST`,
+        `college ${season} postseason standings`,
+        { notFound: [] },
+      ),
+    ])
+
+    const conferences = await fetchSportsDataJson<Array<{ Teams?: SportsDataTeam[] }>>(
+      '/cfb/scores/json/LeagueHierarchy',
+      'college hierarchy catalog',
+    )
+    const catalog = conferences
+      .flatMap((conference) => conference.Teams ?? [])
+      .filter((team) => team.Active !== false)
+    const normalizedRegular = regular.map(normalizeCollegeStanding)
+
+    return {
+      standings: validateAndCombineCollegeStandings(
+        season,
+        expandCollegeStandingsToCatalog(season, catalog, normalizedRegular),
+        postseason.map(normalizeCollegeStanding),
+      ),
+      source: SEASON_SCOPED_COLLEGE_SOURCE,
+    }
+  } catch (error) {
+    if (!(error instanceof SportsDataHttpError) || ![401, 403].includes(error.status)) throw error
+  }
+
+  console.log(`Season-scoped college feed is not entitled; validating LeagueHierarchy for ${season}...`)
+  const [providerCurrentSeason, conferences] = await Promise.all([
+    fetchSportsDataJson<number>('/cfb/scores/json/CurrentSeason', 'college current season'),
+    fetchSportsDataJson<Array<{ Teams?: SportsDataTeam[] }>>(
+      '/cfb/scores/json/LeagueHierarchy',
+      'college hierarchy',
+    ),
+  ])
   const teams = conferences
     .flatMap((conference) => conference.Teams ?? [])
     .filter((team) => team.Active !== false)
-  if (teams.length < 120 || teams.length > 160) {
-    throw new Error(`SportsDataIO returned an implausible active FBS field (${teams.length} teams); no standings were changed`)
+  const hierarchyStandings = teams.map((team): SportsDataStanding => ({
+    Season: season,
+    SeasonType: 1,
+    TeamID: team.TeamID,
+    GlobalTeamID: team.TeamID,
+    Key: team.Key,
+    Name: team.Name || team.School || team.Key,
+    Team: [team.School, team.Name].filter(Boolean).join(' ') || team.Key,
+    Wins: team.Wins ?? 0,
+    Losses: team.Losses ?? 0,
+    Ties: 0,
+    ConferenceWins: team.ConferenceWins ?? 0,
+    ConferenceLosses: team.ConferenceLosses ?? 0,
+  }))
+  validateCollegeHierarchyRollover(season, providerCurrentSeason, hierarchyStandings)
+  return {
+    standings: validateAndCombineCollegeStandings(season, hierarchyStandings, []),
+    source: VERIFIED_HIERARCHY_COLLEGE_SOURCE,
   }
-  const aggregate = teams.map((team): SportsDataStanding => {
-    return {
-      Season: season,
-      SeasonType: 1,
-      TeamID: team.TeamID,
-      GlobalTeamID: team.TeamID,
-      Key: team.Key,
-      Name: team.Name || team.School || team.Key,
-      Team: [team.School, team.Name].filter(Boolean).join(' ') || team.Key,
-      Wins: team.Wins ?? 0,
-      Losses: team.Losses ?? 0,
-      Ties: 0,
-      ConferenceWins: team.ConferenceWins ?? 0,
-      ConferenceLosses: team.ConferenceLosses ?? 0,
-    }
-  })
-  return validateAndCombineCollegeStandings(season, aggregate, [])
 }
 
-async function fetchSportsDataJson<T>(path: string, label: string): Promise<T> {
+function normalizeCollegeStanding(standing: SportsDataStanding): SportsDataStanding {
+  return {
+    ...standing,
+    Key: standing.Key || standing.Team,
+    Name: standing.Name || standing.Team || standing.Key,
+    Team: standing.Team || standing.Key || standing.Name,
+    GlobalTeamID: standing.GlobalTeamID ?? standing.TeamID,
+    Ties: standing.Ties ?? 0,
+    ConferenceWins: standing.ConferenceWins ?? 0,
+    ConferenceLosses: standing.ConferenceLosses ?? 0,
+  }
+}
+
+async function fetchSportsDataJson<T>(
+  path: string,
+  label: string,
+  options: { notFound?: T } = {},
+): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     cache: 'no-store',
     headers: {
@@ -183,6 +257,9 @@ async function fetchSportsDataJson<T>(path: string, label: string): Promise<T> {
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
   if (!response.ok) {
+    if (response.status === 404 && Object.hasOwn(options, 'notFound')) {
+      return options.notFound as T
+    }
     if (response.status === 404) {
       throw new Error(`${label} is not available from the configured SportsDataIO feed`)
     }
@@ -190,7 +267,10 @@ async function fetchSportsDataJson<T>(path: string, label: string): Promise<T> {
       ? ' The configured SportsDataIO subscription may not include this feed.'
       : ''
     const status = response.statusText ? `${response.status} ${response.statusText}` : response.status.toString()
-    throw new Error(`Failed to fetch ${label}: ${status}.${entitlement}`)
+    throw new SportsDataHttpError(
+      response.status,
+      `Failed to fetch ${label}: ${status}.${entitlement}`,
+    )
   }
   return response.json() as Promise<T>
 }
