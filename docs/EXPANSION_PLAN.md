@@ -98,15 +98,15 @@ Remaining before member onboarding:
 
 ### CFB standings and historical preservation
 
-The configured SportsDataIO subscription exposes current aggregate FBS records through `LeagueHierarchy`, but it does not expose the season-specific CFB standings, historical schedules, or postseason game feeds. The application therefore retains the established aggregate source for active-season college W-L-T totals and stores each finalized season as the durable historical record. It does not claim a regular/postseason split for college teams.
+College standings prefer SportsDataIO's season-scoped `TeamSeasonStats/{season}` and `TeamSeasonStats/{season}POST` feeds. When the subscription cannot access them, the application may use `LeagueHierarchy` only after `CurrentSeason` matches the requested season, the largest record is plausible for the current date, and the snapshot does not substantially match the prior season. Otherwise synchronization fails closed and preserves existing records.
 
 The read-only 2025 comparison passed in development: all 138 active FBS aggregate records matched the preserved 2025 team records exactly, and zero finalized standings rows changed. NFL validation also matched all 32 teams.
 
-Before a new season can write college standings, the sync compares the provider snapshot with the most recent prior season. If the complete snapshot is unchanged, the provider has not rolled over and the write is rejected. Malformed records, duplicate teams, invalid totals, implausible FBS counts, and unmapped teams are also rejected before any write.
+Before a new season can write college standings, the sync validates explicit season metadata where available and compares the provider snapshot with the most recent prior season. Wrong-season data, exact or substantial prior-year carryover, early-season records with implausible game counts, malformed records, duplicate teams, invalid totals, implausible FBS counts, and unmapped teams are rejected before any write.
 
 Remaining operational checks:
 
-- Observe the first real 2026 CFB update and confirm the rollover guard releases only after the provider changes the aggregate snapshot.
+- Observe the first real 2026 CFB hierarchy update and confirm the rollover guard releases only after the provider resets the aggregate records.
 - Verify representative records during the first two weeks and after conference championship, bowl, and playoff results.
 - Keep finalized seasons immutable unless a commissioner explicitly reopens them through an audited workflow.
 - Treat season-specific historical replay as an optional future capability requiring additional SportsDataIO entitlement; it is not required to preserve or display saved historical seasons.
@@ -116,7 +116,7 @@ Implemented in development:
 - The commissioner standings workspace can run NFL, college, or combined synchronization for any mutable season.
 - Every manual or scheduled attempt records its requester, source scope, start/completion time, success/partial/failure state, updated counts, and sanitized errors without retaining provider payloads or credentials.
 - NFL synchronization rejects the feed before writing unless it contains 32 unique, season-matched teams with valid nonnegative records. Regular and postseason totals remain separately recorded and are combined for pool scoring.
-- College synchronization validates the official aggregate FBS catalog, rejects incomplete or invalid snapshots, and blocks an unchanged prior-season snapshot from being written into a new season.
+- College synchronization prefers season-scoped FBS records and safely falls back to the current hierarchy; it rejects incomplete, invalid, wrong-season, implausibly early, or substantially unchanged prior-season snapshots.
 - Provider requests bypass application caching and time out instead of leaving a commissioner action pending indefinitely.
 - Empty or unavailable feeds are recorded as failed attempts with zero writes and a commissioner-readable availability message.
 - Finalized seasons expose a separate read-only validation action. It recalculates NFL and college totals from SportsDataIO, compares them team-by-team with preserved records, retains match/mismatch/missing-team results, and records that zero standings rows changed.

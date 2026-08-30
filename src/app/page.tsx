@@ -10,6 +10,7 @@ import { prisma } from '@/lib/db'
 import { formatDraftStartTime } from '@/lib/draft/logistics'
 import { editableRosterNickname, playerDisplayName } from '@/lib/player-settings-rules'
 import { areKeeperSelectionsRevealed } from '@/lib/seasons/keeper-visibility'
+import { isQuarantinedCollegeRecord } from '@/lib/standings-record-source'
 import { compareStandings } from '@/lib/standings-ranking'
 
 export const dynamic = 'force-dynamic'
@@ -95,6 +96,15 @@ export default async function Home({
   const officialOrderType = officialDraft?.orderType === 'LINEAR' ? 'LINEAR' : 'SNAKE'
   const recordByTeam = new Map(records.map((record) => [record.teamId, record]))
   const priorRecordByTeam = new Map(priorRecords.map((record) => [record.teamId, record]))
+  const currentRecordForTeam = (teamId: string, league: string) => {
+    const record = recordByTeam.get(teamId) ?? null
+    if (!record) return null
+    return isQuarantinedCollegeRecord(
+      league,
+      record.source,
+      Boolean(selectedSeason.finalizedAt),
+    ) ? null : record
+  }
   const standings = participants
     .map((participant) => {
       let totalWins = 0
@@ -104,7 +114,7 @@ export default async function Home({
       let bestCollegeTeamWins = 0
       for (const slot of participant.rosterSlots) {
         if (!slot.teamId || !slot.team) continue
-        const wins = recordByTeam.get(slot.teamId)?.wins ?? 0
+        const wins = currentRecordForTeam(slot.teamId, slot.team.league)?.wins ?? 0
         totalWins += wins
         if (slot.team.league === 'NFL') {
           nflWins += wins
@@ -187,7 +197,6 @@ export default async function Home({
     ? keeperPreview === 'revealed'
     : areKeeperSelectionsRevealed(participants)
   const displayedViewerKeeperState = keeperTracker.find((participant) => participant.isViewer)
-  const rosterRecordByTeam = isPreseason ? priorRecordByTeam : recordByTeam
   const champion = isComplete ? standings[0] ?? null : null
   const championNickname = champion ? editableRosterNickname(champion.poolSeat.label) : null
 
@@ -416,7 +425,9 @@ export default async function Home({
 
                   <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                     {participant.rosterSlots.map((slot) => {
-                      const record = slot.teamId ? recordByTeam.get(slot.teamId) : null
+                      const record = slot.teamId && slot.team
+                        ? currentRecordForTeam(slot.teamId, slot.team.league)
+                        : null
                       return (
                         <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-white/5 bg-slate-950/45 px-3 py-2.5" key={slot.id}>
                           {slot.team ? <TeamMark abbreviation={slot.team.abbreviation} logoUrl={slot.team.logoUrl} /> : null}
@@ -444,7 +455,11 @@ export default async function Home({
             <h3 className="mb-3 text-lg font-semibold">My roster</h3>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {viewerParticipant.rosterSlots.map((slot) => {
-                const record = slot.teamId ? rosterRecordByTeam.get(slot.teamId) : null
+                const record = slot.teamId && slot.team
+                  ? isPreseason
+                    ? priorRecordByTeam.get(slot.teamId) ?? null
+                    : currentRecordForTeam(slot.teamId, slot.team.league)
+                  : null
                 return (
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4" key={slot.id}>
                     <div className="flex items-center justify-between gap-2">
