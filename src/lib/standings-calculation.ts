@@ -18,6 +18,61 @@ export interface CollegeStandingTeam {
   Active?: boolean
 }
 
+/**
+ * TeamSeasonStats omits teams until they record their first game. Expand that
+ * sparse, season-scoped response over the active FBS catalog so an absent row
+ * means 0-0, while preserving explicit provider totals for teams that played.
+ */
+export function expandCollegeStandingsToCatalog(
+  season: number,
+  teams: CollegeStandingTeam[],
+  rows: SportsDataStanding[],
+  expectedTeamRange: readonly [number, number] = [120, 160],
+) {
+  validateStandingRows('College season standings', season, rows)
+  const activeTeams = teams.filter((team) => team.Active !== false)
+  const [minimumTeams, maximumTeams] = expectedTeamRange
+  if (activeTeams.length < minimumTeams || activeTeams.length > maximumTeams) {
+    throw new Error(
+      `College team catalog returned ${activeTeams.length} teams; expected ${minimumTeams}-${maximumTeams}`,
+    )
+  }
+
+  const rowByTeamId = new Map(rows.map((row) => [row.TeamID, row]))
+  const seenCatalogIds = new Set<number>()
+  const expanded = activeTeams.map((team): SportsDataStanding => {
+    if (!Number.isInteger(team.TeamID) || team.TeamID <= 0) {
+      throw new Error('College team catalog contained an invalid team ID')
+    }
+    if (seenCatalogIds.has(team.TeamID)) {
+      throw new Error(`College team catalog contained duplicate team ID ${team.TeamID}`)
+    }
+    seenCatalogIds.add(team.TeamID)
+    const providerRow = rowByTeamId.get(team.TeamID)
+    if (providerRow) return providerRow
+    const displayName = [team.School, team.Name].filter(Boolean).join(' ') || team.Key
+    return {
+      Season: season,
+      SeasonType: 1,
+      TeamID: team.TeamID,
+      GlobalTeamID: team.GlobalTeamID ?? team.TeamID,
+      Key: team.Key,
+      Name: team.Name || team.School || team.Key,
+      Team: displayName,
+      Wins: 0,
+      Losses: 0,
+      Ties: 0,
+      ConferenceWins: 0,
+      ConferenceLosses: 0,
+    }
+  })
+  const unknown = rows.find((row) => !seenCatalogIds.has(row.TeamID))
+  if (unknown) {
+    throw new Error(`College season standings contained unknown team ${unknown.Team || unknown.Key}`)
+  }
+  return expanded
+}
+
 export function standingsSyncStatus(updatedTeams: number, errorCount: number) {
   if (errorCount === 0) return 'SUCCEEDED' as const
   return updatedTeams > 0 ? 'PARTIAL' as const : 'FAILED' as const
@@ -36,6 +91,66 @@ export function standingsMatchPreviousSeason(
       && prior.losses === record.losses
       && prior.ties === record.ties
   })
+}
+
+export function standingsSubstantiallyMatchPreviousSeason(
+  current: Array<{ teamId: string; wins: number; losses: number; ties: number }>,
+  previous: Array<{ teamId: string; wins: number; losses: number; ties: number }>,
+  matchThreshold = 0.8,
+) {
+  if (current.length === 0 || previous.length === 0) return false
+  const previousByTeam = new Map(previous.map((record) => [record.teamId, record]))
+  let comparable = 0
+  let matching = 0
+  for (const record of current) {
+    const prior = previousByTeam.get(record.teamId)
+    if (!prior) continue
+    comparable += 1
+    if (
+      prior.wins === record.wins
+      && prior.losses === record.losses
+      && prior.ties === record.ties
+    ) matching += 1
+  }
+  return comparable / current.length >= matchThreshold
+    && matching / comparable >= matchThreshold
+}
+
+/**
+ * LeagueHierarchy does not identify the season of its W-L fields. Accept it
+ * only when SportsDataIO identifies the requested season as current and the
+ * largest record is plausible for the point reached in that season.
+ */
+export function validateCollegeHierarchyRollover(
+  season: number,
+  providerCurrentSeason: number,
+  standings: SportsDataStanding[],
+  now = new Date(),
+) {
+  if (providerCurrentSeason !== season) {
+    throw new Error(
+      `SportsDataIO identifies ${providerCurrentSeason} as current; cannot attribute hierarchy records to ${season}`,
+    )
+  }
+  if (standings.length < 120 || standings.length > 160) {
+    throw new Error(`SportsDataIO returned an implausible active FBS field (${standings.length} teams)`)
+  }
+
+  const seasonStart = new Date(Date.UTC(season, 7, 15))
+  const nextSeason = new Date(Date.UTC(season + 1, 0, 31))
+  if (now >= seasonStart && now <= nextSeason) {
+    const elapsedWeeks = Math.max(0, Math.floor((now.getTime() - seasonStart.getTime()) / 604_800_000))
+    const maximumPlausibleGames = Math.min(25, elapsedWeeks + 2)
+    const observedMaximum = standings.reduce((maximum, standing) => Math.max(
+      maximum,
+      standing.Wins + standing.Losses + (standing.Ties ?? 0),
+    ), 0)
+    if (observedMaximum > maximumPlausibleGames) {
+      throw new Error(
+        `SportsDataIO hierarchy has a ${observedMaximum}-game record too early in ${season}; provider rollover is still pending`,
+      )
+    }
+  }
 }
 
 function validateStandingRows(
@@ -107,9 +222,9 @@ export function validateAndCombineNFLStandings(
 }
 
 /**
- * College records are published as separate regular-season and postseason
- * TeamSeason feeds. Validate both snapshots before combining them so a partial
- * or malformed provider response can never overwrite a season.
+ * College records are published as separate, season-scoped regular-season and
+ * postseason TeamSeason feeds. Validate both snapshots before combining them
+ * so stale, partial, or malformed provider data can never overwrite a season.
  */
 export function validateAndCombineCollegeStandings(
   season: number,

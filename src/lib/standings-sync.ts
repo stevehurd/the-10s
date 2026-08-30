@@ -7,9 +7,11 @@ import {
 import {
   type CombinedStanding,
   standingsMatchPreviousSeason,
+  standingsSubstantiallyMatchPreviousSeason,
   standingsSyncStatus,
   validateAndCombineNFLStandings,
 } from '@/lib/standings-calculation'
+import { SEASON_SCOPED_COLLEGE_SOURCE } from '@/lib/standings-record-source'
 import { mapStandingsToTeams } from '@/lib/standings-team-mapping'
 
 export type StandingsLeague = 'NFL' | 'COLLEGE' | 'BOTH'
@@ -32,10 +34,11 @@ export async function loadValidatedStandings(
     }
   }
 
-  const standings = await fetchCollegeStandings(year)
+  const snapshot = await fetchCollegeStandings(year)
   return {
-    standings,
-    summary: `College: ${standings.length} official aggregate standings records`,
+    standings: snapshot.standings,
+    source: snapshot.source,
+    summary: `College: ${snapshot.standings.length} validated standings records`,
   }
 }
 
@@ -43,6 +46,7 @@ async function syncStandings(
   seasonId: string,
   standings: CombinedStanding[],
   league: 'NFL' | 'COLLEGE',
+  recordSource?: string,
 ) {
   const teams = await prisma.team.findMany({
     where: { league },
@@ -59,7 +63,7 @@ async function syncStandings(
   await prisma.$transaction(async (tx) => {
     const season = await tx.season.findUnique({
       where: { id: seasonId },
-      select: { status: true, finalizedAt: true, year: true, poolId: true },
+      select: { finalizedAt: true, year: true, poolId: true },
     })
     if (!season) throw new Error('Season not found')
     if (season.finalizedAt) throw new Error('Completed season standings are frozen')
@@ -82,15 +86,23 @@ async function syncStandings(
         losses: standing.Losses,
         ties: standing.Ties ?? 0,
       }))
-      if (previousSeason && standingsMatchPreviousSeason(currentRecords, previousSeason.teamRecords)) {
+      if (previousSeason && (
+        standingsMatchPreviousSeason(currentRecords, previousSeason.teamRecords)
+        || standingsSubstantiallyMatchPreviousSeason(currentRecords, previousSeason.teamRecords)
+      )) {
         throw new Error(
           `SportsDataIO college standings still match ${previousSeason.year}; wait for the provider to roll over before syncing ${season.year}`,
         )
       }
     }
 
-    const source = 'SPORTSDATAIO_STANDINGS'
+    const source = league === 'COLLEGE'
+      ? recordSource ?? SEASON_SCOPED_COLLEGE_SOURCE
+      : 'SPORTSDATAIO_STANDINGS'
     const sourceUpdatedAt = new Date()
+    // Standings synchronization owns only season-scoped record totals. Roster
+    // slots, draft selections, keeper decisions, and participant assignments
+    // are intentionally outside this transaction's write scope.
     for (const { standing, team } of mapped) {
       await tx.teamSeasonRecord.upsert({
         where: { seasonId_teamId: { seasonId, teamId: team.id } },
@@ -119,12 +131,6 @@ async function syncStandings(
           sourceUpdatedAt,
         },
       })
-      if (season.status === 'ACTIVE') {
-        await tx.team.update({
-          where: { id: team.id },
-          data: { wins: standing.Wins, losses: standing.Losses, ties: standing.Ties ?? 0 },
-        })
-      }
     }
   }, { timeout: 30_000 })
 
@@ -171,7 +177,7 @@ export async function syncSeasonStandings(
   if (league === 'COLLEGE' || league === 'BOTH') {
     try {
       const loaded = await loadValidatedStandings(season.year, 'COLLEGE')
-      collegeRecords = await syncStandings(season.id, loaded.standings, 'COLLEGE')
+      collegeRecords = await syncStandings(season.id, loaded.standings, 'COLLEGE', loaded.source)
       updatedTeams += collegeRecords
       results.push(loaded.summary)
     } catch (error) {

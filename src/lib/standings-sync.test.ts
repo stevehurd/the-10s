@@ -6,10 +6,19 @@ import {
   calculateCollegeStandingsFromGames,
   combineRegularAndPostseasonStandings,
   type CollegeStandingTeam,
+  expandCollegeStandingsToCatalog,
   standingsMatchPreviousSeason,
+  standingsSubstantiallyMatchPreviousSeason,
   validateAndCombineCollegeStandings,
+  validateCollegeHierarchyRollover,
   validateAndCombineNFLStandings,
 } from './standings-calculation.ts'
+import {
+  isQuarantinedCollegeRecord,
+  SEASON_SCOPED_COLLEGE_SOURCE,
+  UNSCOPED_COLLEGE_SOURCE,
+  VERIFIED_HIERARCHY_COLLEGE_SOURCE,
+} from './standings-record-source.ts'
 import type { SportsDataGame, SportsDataStanding } from './sportsdata.ts'
 
 function standing(teamId: number, wins: number, losses: number, ties = 0): SportsDataStanding {
@@ -129,6 +138,48 @@ test('detects an unchanged prior-season standings snapshot', () => {
   )
 })
 
+test('detects a substantially unchanged prior-season snapshot after a partial provider rollover', () => {
+  const previous = Array.from({ length: 10 }, (_, index) => ({
+    teamId: String(index + 1),
+    wins: 12 - index,
+    losses: index,
+    ties: 0,
+  }))
+  const partiallyChanged = previous.map((row, index) => (
+    index === 0 ? { ...row, wins: row.wins + 1 } : row
+  ))
+
+  assert.equal(standingsMatchPreviousSeason(partiallyChanged, previous), false)
+  assert.equal(standingsSubstantiallyMatchPreviousSeason(partiallyChanged, previous), true)
+  assert.equal(
+    standingsSubstantiallyMatchPreviousSeason(
+      previous.map((row) => ({ ...row, wins: 0, losses: 0 })),
+      previous,
+    ),
+    false,
+  )
+})
+
+test('rejects stale hierarchy totals early in the current college season', () => {
+  const stale = Array.from({ length: 138 }, (_, index) => ({
+    ...standing(index + 1, 12, 4),
+    Season: 2026,
+  }))
+  assert.throws(
+    () => validateCollegeHierarchyRollover(2026, 2026, stale, new Date('2026-08-30T12:00:00Z')),
+    /16-game record too early in 2026/,
+  )
+
+  const rolledOver = stale.map((row) => ({ ...row, Wins: 1, Losses: 0 }))
+  assert.doesNotThrow(
+    () => validateCollegeHierarchyRollover(2026, 2026, rolledOver, new Date('2026-08-30T12:00:00Z')),
+  )
+  assert.throws(
+    () => validateCollegeHierarchyRollover(2026, 2025, rolledOver, new Date('2026-08-30T12:00:00Z')),
+    /identifies 2025 as current/,
+  )
+})
+
 test('validates and combines college regular and postseason standings', () => {
   const regular = [
     standing(1, 11, 2),
@@ -152,6 +203,105 @@ test('validates and combines college regular and postseason standings', () => {
     { id: 2, wins: 9, losses: 4, regularWins: 9, postseasonWins: 0 },
     { id: 3, wins: 6, losses: 6, regularWins: 6, postseasonWins: 0 },
   ])
+})
+
+test('refuses a partially rolled-over college standings feed', () => {
+  const regular = [
+    { ...standing(1, 1, 0), Season: 2026 },
+    { ...standing(2, 9, 4), Season: 2025 },
+    { ...standing(3, 0, 1), Season: 2026 },
+  ]
+
+  assert.throws(
+    () => validateAndCombineCollegeStandings(2026, regular, [], [3, 3]),
+    /Team 2 from season 2025/,
+  )
+})
+
+test('accepts an explicitly season-scoped zeroed college snapshot', () => {
+  const regular = [standing(1, 0, 0), standing(2, 0, 0), standing(3, 0, 0)]
+    .map((record) => ({ ...record, Season: 2026 }))
+
+  const combined = validateAndCombineCollegeStandings(2026, regular, [], [3, 3])
+
+  assert.deepEqual(combined.map((record) => ({
+    season: record.Season,
+    wins: record.Wins,
+    losses: record.Losses,
+  })), [
+    { season: 2026, wins: 0, losses: 0 },
+    { season: 2026, wins: 0, losses: 0 },
+    { season: 2026, wins: 0, losses: 0 },
+  ])
+})
+
+test('expands sparse early-season college stats over the complete FBS catalog', () => {
+  const teams: CollegeStandingTeam[] = [
+    { TeamID: 1, GlobalTeamID: 1001, Key: 'T1', School: 'One', Active: true },
+    { TeamID: 2, GlobalTeamID: 1002, Key: 'T2', School: 'Two', Active: true },
+    { TeamID: 3, GlobalTeamID: 1003, Key: 'T3', School: 'Three', Active: true },
+  ]
+  const sparse = [
+    { ...standing(1, 1, 0), Season: 2026 },
+    { ...standing(2, 0, 1), Season: 2026 },
+  ]
+
+  const expanded = expandCollegeStandingsToCatalog(2026, teams, sparse, [3, 3])
+  assert.deepEqual(expanded.map((record) => ({
+    id: record.TeamID,
+    wins: record.Wins,
+    losses: record.Losses,
+  })), [
+    { id: 1, wins: 1, losses: 0 },
+    { id: 2, wins: 0, losses: 1 },
+    { id: 3, wins: 0, losses: 0 },
+  ])
+})
+
+test('rejects wrong-season, duplicate, and unknown teams in sparse college stats', () => {
+  const teams: CollegeStandingTeam[] = [
+    { TeamID: 1, Key: 'T1', Active: true },
+    { TeamID: 2, Key: 'T2', Active: true },
+    { TeamID: 3, Key: 'T3', Active: true },
+  ]
+  assert.throws(
+    () => expandCollegeStandingsToCatalog(2026, teams, [standing(1, 1, 0)], [3, 3]),
+    /from season 2025/,
+  )
+  assert.throws(
+    () => expandCollegeStandingsToCatalog(
+      2026,
+      teams,
+      [{ ...standing(1, 1, 0), Season: 2026 }, { ...standing(1, 1, 0), Season: 2026 }],
+      [3, 3],
+    ),
+    /duplicate team ID 1/,
+  )
+  assert.throws(
+    () => expandCollegeStandingsToCatalog(
+      2026,
+      teams,
+      [{ ...standing(4, 1, 0), Season: 2026 }],
+      [3, 3],
+    ),
+    /unknown team Team 4/,
+  )
+})
+
+test('keeps team selections outside the standings sync write scope', () => {
+  const syncSource = readFileSync(new URL('./standings-sync.ts', import.meta.url), 'utf8')
+  const selectionWrite = /(?:tx|prisma)\.(?:rosterSlot|draftSelection|draftTurn|seasonParticipant)\.(?:create|createMany|update|updateMany|upsert|delete|deleteMany)/
+
+  assert.doesNotMatch(syncSource, selectionWrite)
+  assert.doesNotMatch(syncSource, /tx\.team\.update/)
+})
+
+test('quarantines only unversioned college records in mutable seasons', () => {
+  assert.equal(isQuarantinedCollegeRecord('COLLEGE', UNSCOPED_COLLEGE_SOURCE, false), true)
+  assert.equal(isQuarantinedCollegeRecord('COLLEGE', SEASON_SCOPED_COLLEGE_SOURCE, false), false)
+  assert.equal(isQuarantinedCollegeRecord('COLLEGE', VERIFIED_HIERARCHY_COLLEGE_SOURCE, false), false)
+  assert.equal(isQuarantinedCollegeRecord('NFL', UNSCOPED_COLLEGE_SOURCE, false), false)
+  assert.equal(isQuarantinedCollegeRecord('COLLEGE', UNSCOPED_COLLEGE_SOURCE, true), false)
 })
 
 test('refuses partial or inconsistent college standings feeds', () => {
