@@ -18,6 +18,48 @@ export interface CollegeStandingTeam {
   Active?: boolean
 }
 
+export interface ReconciledCollegeStandings {
+  standings: CombinedStanding[]
+  ignoredTeams: string[]
+}
+
+/**
+ * TeamSeasonStats includes FCS opponents once they play an FBS team. Reconcile
+ * both season feeds against the active LeagueHierarchy catalog so those
+ * out-of-scope rows cannot block or enter the FBS standings snapshot.
+ */
+export function reconcileCollegeStandingsToCatalog(
+  season: number,
+  teams: CollegeStandingTeam[],
+  regular: SportsDataStanding[],
+  postseason: SportsDataStanding[],
+  expectedTeamRange: readonly [number, number] = [120, 160],
+): ReconciledCollegeStandings {
+  const catalogTeamIds = new Set(
+    teams
+      .filter((team) => team.Active !== false)
+      .map((team) => team.TeamID),
+  )
+  const catalogRegular = regular.filter((row) => catalogTeamIds.has(row.TeamID))
+  const catalogPostseason = postseason.filter((row) => catalogTeamIds.has(row.TeamID))
+  const ignoredByTeamId = new Map<number, string>()
+
+  for (const row of [...regular, ...postseason]) {
+    if (catalogTeamIds.has(row.TeamID) || ignoredByTeamId.has(row.TeamID)) continue
+    ignoredByTeamId.set(row.TeamID, row.Team || row.Key || row.Name || row.TeamID.toString())
+  }
+
+  return {
+    standings: validateAndCombineCollegeStandings(
+      season,
+      expandCollegeStandingsToCatalog(season, teams, catalogRegular, expectedTeamRange),
+      catalogPostseason,
+      expectedTeamRange,
+    ),
+    ignoredTeams: [...ignoredByTeamId.values()],
+  }
+}
+
 /**
  * TeamSeasonStats omits teams until they record their first game. Expand that
  * sparse, season-scoped response over the active FBS catalog so an absent row

@@ -7,6 +7,7 @@ import {
   combineRegularAndPostseasonStandings,
   type CollegeStandingTeam,
   expandCollegeStandingsToCatalog,
+  reconcileCollegeStandingsToCatalog,
   standingsMatchPreviousSeason,
   standingsSubstantiallyMatchPreviousSeason,
   validateAndCombineCollegeStandings,
@@ -256,6 +257,50 @@ test('expands sparse early-season college stats over the complete FBS catalog', 
     { id: 2, wins: 0, losses: 1 },
     { id: 3, wins: 0, losses: 0 },
   ])
+})
+
+test('ignores a non-FBS opponent in season standings while preserving the complete FBS catalog', () => {
+  const teams: CollegeStandingTeam[] = [
+    { TeamID: 1, GlobalTeamID: 1001, Key: 'T1', School: 'One', Active: true },
+    { TeamID: 2, GlobalTeamID: 1002, Key: 'T2', School: 'Two', Active: true },
+    { TeamID: 3, GlobalTeamID: 1003, Key: 'T3', School: 'Three', Active: true },
+  ]
+  const regular = [
+    { ...standing(1, 1, 0), Season: 2026 },
+    { ...standing(4, 0, 1), Season: 2026, Key: 'ALBNY', Team: 'ALBNY', Name: 'Albany' },
+  ]
+
+  const reconciled = reconcileCollegeStandingsToCatalog(2026, teams, regular, [], [3, 3])
+
+  assert.deepEqual(reconciled.ignoredTeams, ['ALBNY'])
+  assert.deepEqual(reconciled.standings.map((record) => ({
+    id: record.TeamID,
+    wins: record.Wins,
+    losses: record.Losses,
+  })), [
+    { id: 1, wins: 1, losses: 0 },
+    { id: 2, wins: 0, losses: 0 },
+    { id: 3, wins: 0, losses: 0 },
+  ])
+})
+
+test('ignores non-FBS postseason rows without weakening FBS postseason validation', () => {
+  const teams: CollegeStandingTeam[] = [
+    { TeamID: 1, Key: 'T1', Active: true },
+    { TeamID: 2, Key: 'T2', Active: true },
+    { TeamID: 3, Key: 'T3', Active: true },
+  ]
+  const regular = [1, 2, 3].map((teamId) => ({ ...standing(teamId, 1, 0), Season: 2026 }))
+  const postseason = [
+    { ...standing(1, 1, 0), Season: 2026, SeasonType: 3 },
+    { ...standing(4, 1, 0), Season: 2026, SeasonType: 3, Key: 'FCS', Team: 'FCS' },
+  ]
+
+  const reconciled = reconcileCollegeStandingsToCatalog(2026, teams, regular, postseason, [3, 3])
+
+  assert.deepEqual(reconciled.ignoredTeams, ['FCS'])
+  assert.equal(reconciled.standings.find((record) => record.TeamID === 1)?.Wins, 2)
+  assert.equal(reconciled.standings.some((record) => record.TeamID === 4), false)
 })
 
 test('rejects wrong-season, duplicate, and unknown teams in sparse college stats', () => {
