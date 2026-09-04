@@ -1,6 +1,6 @@
 import {
   type CombinedStanding,
-  expandCollegeStandingsToCatalog,
+  reconcileCollegeStandingsToCatalog,
   validateAndCombineCollegeStandings,
   validateCollegeHierarchyRollover,
 } from './standings-calculation.ts'
@@ -79,6 +79,7 @@ export interface SportsDataStanding {
 export type CollegeStandingsSnapshot = {
   standings: CombinedStanding[]
   source: typeof SEASON_SCOPED_COLLEGE_SOURCE | typeof VERIFIED_HIERARCHY_COLLEGE_SOURCE
+  ignoredTeams: string[]
 }
 
 class SportsDataHttpError extends Error {
@@ -185,14 +186,18 @@ export async function fetchCollegeStandings(season: number = 2025): Promise<Coll
       .flatMap((conference) => conference.Teams ?? [])
       .filter((team) => team.Active !== false)
     const normalizedRegular = regular.map(normalizeCollegeStanding)
+    const normalizedPostseason = postseason.map(normalizeCollegeStanding)
+    const reconciled = reconcileCollegeStandingsToCatalog(
+      season,
+      catalog,
+      normalizedRegular,
+      normalizedPostseason,
+    )
 
     return {
-      standings: validateAndCombineCollegeStandings(
-        season,
-        expandCollegeStandingsToCatalog(season, catalog, normalizedRegular),
-        postseason.map(normalizeCollegeStanding),
-      ),
+      standings: reconciled.standings,
       source: SEASON_SCOPED_COLLEGE_SOURCE,
+      ignoredTeams: reconciled.ignoredTeams,
     }
   } catch (error) {
     if (!(error instanceof SportsDataHttpError) || ![401, 403].includes(error.status)) throw error
@@ -227,6 +232,7 @@ export async function fetchCollegeStandings(season: number = 2025): Promise<Coll
   return {
     standings: validateAndCombineCollegeStandings(season, hierarchyStandings, []),
     source: VERIFIED_HIERARCHY_COLLEGE_SOURCE,
+    ignoredTeams: [],
   }
 }
 
