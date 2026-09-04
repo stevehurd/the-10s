@@ -35,10 +35,13 @@ export async function loadValidatedStandings(
   }
 
   const snapshot = await fetchCollegeStandings(year)
+  const ignoredSummary = snapshot.ignoredTeams.length > 0
+    ? `; ignored ${snapshot.ignoredTeams.length} non-FBS provider record${snapshot.ignoredTeams.length === 1 ? '' : 's'}: ${snapshot.ignoredTeams.slice(0, 5).join(', ')}${snapshot.ignoredTeams.length > 5 ? ', …' : ''}`
+    : ''
   return {
     standings: snapshot.standings,
     source: snapshot.source,
-    summary: `College: ${snapshot.standings.length} validated standings records`,
+    summary: `College: ${snapshot.standings.length} validated FBS standings records${ignoredSummary}`,
   }
 }
 
