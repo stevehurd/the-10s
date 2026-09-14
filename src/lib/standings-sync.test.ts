@@ -69,14 +69,50 @@ test('validates the complete NFL feed and preserves regular/postseason scoring s
   ])
 })
 
-test('refuses incomplete, duplicate, wrong-season, and negative NFL records', () => {
+test('syncs available NFL records before all teams have played', () => {
+  const regular = nflFixture.regular.slice(0, 2).map((record, index) => ({
+    ...record,
+    Season: 2026,
+    Wins: index === 0 ? 1 : 0,
+    Losses: index === 0 ? 0 : 1,
+    Ties: 0,
+  }))
+  const combined = validateAndCombineNFLStandings(2026, regular, [])
+  assert.deepEqual(combined.map((record) => ({
+    id: record.TeamID,
+    wins: record.Wins,
+    losses: record.Losses,
+    ties: record.Ties,
+    regularWins: record.regularWins,
+    postseasonWins: record.postseasonWins,
+  })), [
+    { id: 11, wins: 1, losses: 0, ties: 0, regularWins: 1, postseasonWins: 0 },
+    { id: 12, wins: 0, losses: 1, ties: 0, regularWins: 0, postseasonWins: 0 },
+  ])
+  assert.equal(combined.some((record) => record.TeamID === 13), false)
+  assert.deepEqual(regular.map((record) => record.Wins), [1, 0])
+})
+
+test('accepts a sparse NFL feed while preserving postseason scoring', () => {
+  const combined = validateAndCombineNFLStandings(
+    nflFixture.season,
+    nflFixture.regular,
+    nflFixture.postseason,
+  )
+  assert.equal(combined[0].Wins, 15)
+  assert.equal(combined[0].regularWins, 12)
+  assert.equal(combined[0].postseasonWins, 3)
+  assert.equal(combined[1].Ties, 1)
+})
+
+test('refuses empty, oversized, duplicate, wrong-season, and negative NFL records', () => {
   assert.throws(
     () => validateAndCombineNFLStandings(2026, [], [], 32),
     /not available yet for 2026/,
   )
   assert.throws(
-    () => validateAndCombineNFLStandings(2025, nflFixture.regular.slice(0, 2), [], 3),
-    /returned 2 teams; expected 3/,
+    () => validateAndCombineNFLStandings(2025, nflFixture.regular, [], 2),
+    /returned 3 teams; expected at most 2/,
   )
   assert.throws(
     () => validateAndCombineNFLStandings(2025, [nflFixture.regular[0], nflFixture.regular[0], nflFixture.regular[2]], [], 3),

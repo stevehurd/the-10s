@@ -226,8 +226,9 @@ function validateStandingRows(
 
 /**
  * Validates the season-scoped NFL feeds before any database write. The regular
- * feed must contain the complete 32-team league; postseason rows may be empty
- * or contain only teams already present in the regular feed.
+ * feed may omit teams that have not played yet. Sync only the supplied records
+ * so an omitted team never has its existing season totals reset. Postseason
+ * rows with results must belong to teams already present in the regular feed.
  */
 export function validateAndCombineNFLStandings(
   season: number,
@@ -240,8 +241,8 @@ export function validateAndCombineNFLStandings(
   if (regular.length === 0) {
     throw new Error(`NFL regular-season standings are not available yet for ${season}`)
   }
-  if (regular.length !== expectedTeamCount) {
-    throw new Error(`NFL regular-season standings returned ${regular.length} teams; expected ${expectedTeamCount}`)
+  if (regular.length > expectedTeamCount) {
+    throw new Error(`NFL regular-season standings returned ${regular.length} teams; expected at most ${expectedTeamCount}`)
   }
 
   const regularTeamIds = new Set(regular.map((standing) => standing.TeamID))
